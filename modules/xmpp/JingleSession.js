@@ -1,6 +1,7 @@
 /* global __filename */
 import { getLogger } from 'jitsi-meet-logger';
 import * as JingleSessionState from './JingleSessionState';
+import Listenable from '../util/Listenable';
 
 const logger = getLogger(__filename);
 
@@ -9,7 +10,7 @@ const logger = getLogger(__filename);
  * have different implementations depending on the underlying interface used
  * (i.e. WebRTC and ORTC) and here we hold the code common to all of them.
  */
-export default class JingleSession {
+export default class JingleSession extends Listenable {
 
     /* eslint-disable max-params */
 
@@ -34,6 +35,7 @@ export default class JingleSession {
             mediaConstraints,
             iceConfig,
             isInitiator) {
+        super();
         this.sid = sid;
         this.localJid = localJid;
         this.remoteJid = remoteJid;
@@ -173,6 +175,8 @@ export default class JingleSession {
      * @param {Object} options
      * @param {string} [options.reason] XMPP Jingle error condition
      * @param {string} [options.reasonDescription] some meaningful error message
+     * @param {boolean} [options.requestRestart=false] set to true to ask Jicofo to start a new session one this once is
+     * terminated.
      * @param {boolean} [options.sendSessionTerminate=true] set to false to skip
      * sending session-terminate. It may not make sense to send it if the XMPP
      * connection has been closed already or if the remote peer has disconnected

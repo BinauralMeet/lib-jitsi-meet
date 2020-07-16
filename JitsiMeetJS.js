@@ -25,6 +25,7 @@ import LocalStatsCollector from './modules/statistics/LocalStatsCollector';
 import Logger from 'jitsi-meet-logger';
 import * as MediaType from './service/RTC/MediaType';
 import Resolutions from './service/RTC/Resolutions';
+import NetworkInfo from './modules/connectivity/NetworkInfo';
 import { ParticipantConnectionStatus }
     from './modules/connectivity/ParticipantConnectionStatus';
 import RTC from './modules/RTC/RTC';
@@ -299,10 +300,6 @@ export default _mergeNamespaceAndModule({
      * @param {string} options.resolution resolution constraints
      * @param {string} options.cameraDeviceId
      * @param {string} options.micDeviceId
-     * @param {object} options.desktopSharingExtensionExternalInstallation -
-     * enables external installation process for desktop sharing extension if
-     * the inline installation is not posible. The following properties should
-     * be provided:
      * @param {intiger} interval - the interval (in ms) for
      * checking whether the desktop sharing extension is installed or not
      * @param {Function} checkAgain - returns boolean. While checkAgain()==true
@@ -445,12 +442,12 @@ export default _mergeNamespaceAndModule({
                 }
 
                 if (error.name
-                        === JitsiTrackErrors.CHROME_EXTENSION_USER_CANCELED) {
+                        === JitsiTrackErrors.SCREENSHARING_USER_CANCELED) {
                     // User cancelled action is not really an error, so only
                     // log it as an event to avoid having conference classified
                     // as partially failed
                     const logObject = {
-                        id: 'chrome_extension_user_canceled',
+                        id: 'screensharing_user_canceled',
                         message: error.message
                     };
 
@@ -616,6 +613,16 @@ export default _mergeNamespaceAndModule({
             `Column: ${colno}`,
             'StackTrace: ', error);
         Statistics.reportGlobalError(error);
+    },
+
+    /**
+     * Informs lib-jitsi-meet about the current network status.
+     *
+     * @param {boolean} isOnline - {@code true} if the internet connectivity is online or {@code false}
+     * otherwise.
+     */
+    setNetworkInfo({ isOnline }) {
+        NetworkInfo.updateNetworkInfo({ isOnline });
     },
 
     /**
