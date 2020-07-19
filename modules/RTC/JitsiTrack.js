@@ -384,7 +384,16 @@ export default class JitsiTrack extends EventEmitter {
      * screen capture as opposed to a camera.
      */
     isScreenSharing() {
-        return this.isVideoTrack() && this.videoType !== 'camera'
+        console.log("videoType = ",this.videoType, " type = ", this.type)
+        return this.videoType === 'desktop'
+    }
+    isMainScreen() {
+        //  TODO: need to implement
+        return this.isScreenSharing()
+    }
+    isContentScreen() {
+        //  TODO: need to implement
+        return this.isScreenSharing()
     }
 
     /**
