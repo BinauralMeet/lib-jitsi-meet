@@ -1876,8 +1876,11 @@ export default class JingleSessionPC extends JingleSession {
                 }
 
                 // Transition from no video to video (unmute).
+                //  EXT_MULTI_VIDEO ---------------------------------------------------
+                //  if (!oldTrack && newTrack && newTrack.isVideoTrack()) {
                 if (!oldTrack && newTrack && newTrack.isVideoTrack() && newTrack.videoType === 'camera') {
-                    // Clearing current primary SSRC will make
+                //  -------------------------------------------------------------------
+                        // Clearing current primary SSRC will make
                     // the SdpConsistency generate a new one which will result
                     // with:
                     // 1. source-remove for the recvonly
@@ -1885,7 +1888,10 @@ export default class JingleSessionPC extends JingleSession {
                     this.peerconnection.clearRecvonlySsrc();
 
                 // Transition from video to no video
+                //  EXT_MULTI_VIDEO ---------------------------------------------------
+                //  } else if (oldTrack && oldTrack.isVideoTrack() && !newTrack && oldTrack.videoType === 'camera') {
                 } else if (oldTrack && oldTrack.isVideoTrack() && !newTrack && oldTrack.videoType === 'camera') {
+                //  -------------------------------------------------------------------
                     // Clearing current primary SSRC and generating the recvonly
                     // will result in:
                     // 1. source-remove for the old video stream
