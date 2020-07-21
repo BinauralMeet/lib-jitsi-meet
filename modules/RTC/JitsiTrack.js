@@ -391,7 +391,7 @@ export default class JitsiTrack extends EventEmitter {
         return this.videoType === 'mainScreen'
     }
     /// 
-    setMainStreem() {
+    makeThisMainScreen() {
         return this.videoType = 'mainScreen'
     }
     /// videoType is used to send content id
