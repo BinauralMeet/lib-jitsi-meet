@@ -14,7 +14,7 @@ import RTCUtils from './RTCUtils';
 import browser from '../browser';
 import RTCEvents from '../../service/RTC/RTCEvents';
 import RtxModifier from '../xmpp/RtxModifier';
-import { SIM_LAYER_RIDS, TPCUtils } from './TPCUtils';
+import { SIM_LAYER_RIDS, TPCLOG, TPCUtils } from './TPCUtils';
 
 // FIXME SDP tools should end up in some kind of util module
 import SDP from '../xmpp/SDP';
@@ -1588,7 +1588,10 @@ TraceablePeerConnection.prototype.addTrackUnmute = function(track) {
  * @private
  */
 TraceablePeerConnection.prototype._addStream = function(mediaStream) {
-    this.peerconnection.addStream(mediaStream);
+    //this.peerconnection.addStream(mediaStream);
+    const track = mediaStream.getTracks()[0]
+    this.peerconnection.addTrack(track, mediaStream)
+    TPCLOG && console.log(`TPC add track tid:${track.id} msid:${mediaStream.id}`)
     this._addedStreams.push(mediaStream);
 };
 
@@ -1597,10 +1600,14 @@ TraceablePeerConnection.prototype._addStream = function(mediaStream) {
  * @param {MediaStream} mediaStream
  */
 TraceablePeerConnection.prototype._removeStream = function(mediaStream) {
-        this.peerconnection.removeStream(mediaStream);
+    //    this.peerconnection.removeStream(mediaStream);
+    const track = mediaStream.getTracks[0] 
+    const sender = this.peerconnection.getSenders().find(sednder=>sender.track === track)
+    if (sender) this.peerconnection.removeTrack(sender)
     this._addedStreams
         = this._addedStreams.filter(stream => stream !== mediaStream);
-};
+    TPCLOG && console.log(`TPC remove track  tid:${track.id} msid:${mediaStream.id}`)
+    };
 
 /**
  * This method when called will check if given <tt>localTrack</tt> belongs to
@@ -1661,8 +1668,14 @@ TraceablePeerConnection.prototype.removeTrack = function(localTrack) {
     this.localSSRCs.delete(localTrack.rtcId);
 
     if (webRtcStream) {
-            this.peerconnection.removeStream(webRtcStream);
-        }
+        //this.peerconnection.removeStream(webRtcStream);
+        const sender = this.peerconnection.getSenders().find(sender=>sender.track === localTrack.getTrack())
+        if (sender) this.peerconnection.removeTrack(sender)
+        this._addedStreams
+            = this._addedStreams.filter(stream => stream !== webRtcStream);
+        TPCLOG && console.log(`TPC remove track  tid:${localTrack.getTrack().id} msid:${webRtcStream.id}`)            
+        
+    }
 };
 
 /**

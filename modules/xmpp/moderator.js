@@ -303,8 +303,6 @@ Moderator.prototype.createConferenceIq = function() {
             }).up();
     }
     elem.up();
-    console.log("createConferenceIq elem:")
-    console.dir(elem)
 
     return elem;
 };
