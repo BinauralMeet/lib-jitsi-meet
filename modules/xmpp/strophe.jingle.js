@@ -72,13 +72,12 @@ export default class JingleConnectionPlugin extends ConnectionPlugin {
         });
 
         logger.log(`on jingle ${action} from ${fromJid} sid: ${sid}`, iq);
-//        console.log("on jingle " + action + " from " + fromJid + " sid:" + sid);
         let sess = this.sessions[sid];
 
         if (action !== 'session-initiate') {
             if (!sess) {
-                console.log("sid:" + sid + " not found.")
-                console.log(Object.keys(this.sessions));
+                //  console.log("sid:" + sid + " not found.")
+                //  console.log(Object.keys(this.sessions));
                 ack.attrs({ type: 'error' });
                 ack.c('error', { type: 'cancel' })
                     .c('item-not-found', {
@@ -171,8 +170,8 @@ export default class JingleConnectionPlugin extends ConnectionPlugin {
 
 
             this.sessions[sess.sid] = sess;
-            console.log("new JingleSessionPC sid:" + sess.sid)
-            console.log(Object.keys(this.sessions));
+            //  console.log("new JingleSessionPC sid:" + sess.sid)
+            //  console.log(Object.keys(this.sessions));
 
             this.eventEmitter.emit(XMPPEvents.CALL_INCOMING,
                 sess, $(iq).find('>jingle'), now);
@@ -289,7 +288,7 @@ export default class JingleConnectionPlugin extends ConnectionPlugin {
             if (this.sessions[sid].state !== 'ended') {
                 this.sessions[sid].onTerminated(reasonCondition, reasonText);
             }
-            console.log("JingleConnectionPlugin terminate(sid:" + sid + ") called.")
+            //  console.log("JingleConnectionPlugin terminate(sid:" + sid + ") called.")
             delete this.sessions[sid];
         }
     }
