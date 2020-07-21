@@ -11,8 +11,8 @@ const logger = getLogger(__filename);
 const SIM_LAYER_1_RID = '1';
 const SIM_LAYER_2_RID = '2';
 const SIM_LAYER_3_RID = '3';
-export let TPCLOG = true
-export function setTPCLOG(f){TPCLOG = f}
+export let tpcLog = () => {}
+export function setTPCLogger(f){tpcLog = f}
 
 export const SIM_LAYER_RIDS = [ SIM_LAYER_1_RID, SIM_LAYER_2_RID, SIM_LAYER_3_RID ];
 
@@ -261,7 +261,7 @@ export class TPCUtils {
         if (transceiver.direction === 'recvonly') {
             //this.pc.peerconnection.addStream(localTrack.getOriginalStream());
             this.pc.peerconnection.addTrack(localTrack, localTrack.getOriginalStream())
-            TPCLOG && console.log(`TPCUtils TRACK_ADD ${localTrack} ${localTrack.getUsageLabel()} tid:${localTrack.getTrackId()}`)
+            tpcLog(`TPCUtils TRACK_ADD ${localTrack} ${localTrack.getUsageLabel()} tid:${localTrack.getTrackId()}`)
             this.setEncodings(localTrack);
             this.pc.localTracks.set(localTrack.rtcId, localTrack);
             transceiver.direction = 'sendrecv';
