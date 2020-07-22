@@ -479,11 +479,13 @@ TraceablePeerConnection.prototype._peerMutedChanged = function(
 
         return;
     }
-    const track = this.getRemoteTracks(endpointId, mediaType);
+    const tracks = this.getRemoteTracks(endpointId, mediaType);
 
-    if (track.length) {
-        // NOTE 1 track per media type is assumed
-        track[0].setMute(isMuted);
+    //	EXT_MULTI_VIDEO  desktop streams can not be muted. The camera stream can be muted.
+	for(const track of tracks){
+        if (track.isAudioTrack() || track.videoType === VideoType.CAMERA){
+            track.setMute(isMuted)
+        }
     }
 };
 
@@ -567,7 +569,8 @@ TraceablePeerConnection.prototype.getRemoteTracks = function(
             // eslint-disable-next-line no-continue
             continue;
         }
-/*
+		//	EXT_MULTI_VIDEO ------------------------------------
+/*		
         for (const trackMediaType of endpointTrackMap.keys()) {
             // per media type filtering
             if (!mediaType || mediaType === trackMediaType) {
@@ -579,10 +582,11 @@ TraceablePeerConnection.prototype.getRemoteTracks = function(
             }
         }*/
         endpointTrackMap.forEach((track) => {
-            if (track && (!mediaType || mediaType === track.mediaType)){
+            if (track && (!mediaType || mediaType === track.type)){
                 remoteTracks.push(track);
             }
         })
+		//	 ----------------------------------------------------
     }
 
     return remoteTracks;
@@ -832,6 +836,7 @@ TraceablePeerConnection.prototype._createRemoteTrack = function(
         this.remoteTracks.set(ownerEndpointId, remoteTracksMap);
     }
 
+	//	EXT_MULTI_VIDEO ------------------------------------
 /*    const existingTrack = remoteTracksMap.get(mediaType);
 
     if (existingTrack && existingTrack.getTrack() === track) {
@@ -848,6 +853,7 @@ TraceablePeerConnection.prototype._createRemoteTrack = function(
                 + `${ownerEndpointId} ${mediaType}`);
     }
 */
+	//	----------------------------------------------------
     const remoteTrack
         = new JitsiRemoteTrack(
                 this.rtc,
@@ -861,9 +867,10 @@ TraceablePeerConnection.prototype._createRemoteTrack = function(
                 muted,
                 this.isP2P);
 
+	//	EXT_MULTI_VIDEO ------------------------------------
     //remoteTracksMap.set(mediaType, remoteTrack);
     remoteTracksMap.set(remoteTrack.getId(), remoteTrack);
-
+	//	----------------------------------------------------
     this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_ADDED, remoteTrack, this);
 };
 
@@ -982,6 +989,7 @@ TraceablePeerConnection.prototype.removeRemoteTracks = function(owner) {
     const removedTracks = [];
     const remoteTracksMap = this.remoteTracks.get(owner);
 
+	//	EXT_MULTI_VIDEO -----------------------------------------
 /*    if (remoteTracksMap) {
         const removedAudioTrack = remoteTracksMap.get(MediaType.AUDIO);
         const removedVideoTrack = remoteTracksMap.get(MediaType.VIDEO);
@@ -998,6 +1006,7 @@ TraceablePeerConnection.prototype.removeRemoteTracks = function(owner) {
             }
         })
     }
+	//	----------------------------------------------------
 
     logger.debug(
         `${this} removed remote tracks for ${owner} count: ${
@@ -1016,6 +1025,7 @@ TraceablePeerConnection.prototype._removeRemoteTrack = function(toBeRemoved) {
     const participantId = toBeRemoved.getParticipantId();
     const remoteTracksMap = this.remoteTracks.get(participantId);
 
+	//	EXT_MULTI_VIDEO-------------------------------------
 /*   
     if (!remoteTracksMap) {
         logger.error(
@@ -1032,6 +1042,7 @@ TraceablePeerConnection.prototype._removeRemoteTrack = function(toBeRemoved) {
         logger.error(
         `Failed to remove ${toBeRemoved} - remoteTrack mapping messed up ?`);
     }
+	//	----------------------------------------------------
     this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_REMOVED, toBeRemoved);
 };
 
@@ -1656,9 +1667,6 @@ TraceablePeerConnection.prototype.isMediaStreamInPc = function(mediaStream) {
  *       The same applies to addTrack.
  */
 TraceablePeerConnection.prototype.removeTrack = function(localTrack) {
-    if (browser.usesUnifiedPlan()) {
-        return this.tpcUtils.removeTrack(localTrack);
-    }
     const webRtcStream = localTrack.getOriginalStream();
 
     this.trace(
@@ -2461,7 +2469,7 @@ TraceablePeerConnection.prototype.createOffer = function(constraints) {
  */
 function hasCameraTrack(peerConnection) {
     return peerConnection.getLocalTracks()
-        .some(t => t.videoType === 'camera');
+        .some(t => t.videoType === VideoType.CAMERA);
 }
 
 TraceablePeerConnection.prototype._createOfferOrAnswer = function(
