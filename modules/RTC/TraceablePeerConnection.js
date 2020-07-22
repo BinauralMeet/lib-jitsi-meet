@@ -1601,13 +1601,18 @@ TraceablePeerConnection.prototype._addStream = function(mediaStream) {
  */
 TraceablePeerConnection.prototype._removeStream = function(mediaStream) {
     //    this.peerconnection.removeStream(mediaStream);
-    const track = mediaStream.getTracks[0] 
-    const sender = this.peerconnection.getSenders().find(sednder=>sender.track === track)
-    if (sender) this.peerconnection.removeTrack(sender)
-    this._addedStreams
-        = this._addedStreams.filter(stream => stream !== mediaStream);
-    tpcLog(`TPC remove track  tid:${track.id} msid:${mediaStream.id}`)
-    };
+    const track = mediaStream.getTracks[0]
+    if (track){
+        const sender = this.peerconnection.getSenders().find(sender=>sender.track === track)
+        if (sender) this.peerconnection.removeTrack(sender)
+        tpcLog(`TPC remove track  tid:${track.id} msid:${mediaStream.id}`)
+    }else{
+        this.peerconnection.removeStream(mediaStream)
+        tpcLog(`TPC remove track msid:${mediaStream.id} removeStream() called.`)
+    }
+    this._addedStreams = this._addedStreams.filter(stream => stream !== mediaStream);
+
+};
 
 /**
  * This method when called will check if given <tt>localTrack</tt> belongs to

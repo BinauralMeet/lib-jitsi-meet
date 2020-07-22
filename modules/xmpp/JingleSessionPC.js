@@ -1889,7 +1889,7 @@ export default class JingleSessionPC extends JingleSession {
 
                 // Transition from video to no video
                 //  EXT_MULTI_VIDEO ---------------------------------------------------
-                //  } else if (oldTrack && oldTrack.isVideoTrack() && !newTrack && oldTrack.videoType === 'camera') {
+                //  } else if (oldTrack && oldTrack.isVideoTrack() && !newTrack) {
                 } else if (oldTrack && oldTrack.isVideoTrack() && !newTrack && oldTrack.videoType === 'camera') {
                 //  -------------------------------------------------------------------
                     // Clearing current primary SSRC and generating the recvonly
