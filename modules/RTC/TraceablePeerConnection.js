@@ -1600,9 +1600,9 @@ TraceablePeerConnection.prototype.addTrackUnmute = function(track) {
  */
 TraceablePeerConnection.prototype._addStream = function(mediaStream) {
     //this.peerconnection.addStream(mediaStream);
-    const track = mediaStream.getTracks()[0]
-    this.peerconnection.addTrack(track, mediaStream)
-    tpcLog(`TPC add track tid:${track.id} msid:${mediaStream.id}`)
+    const mstrack = mediaStream.getTracks()[0]
+    this.peerconnection.addTrack(mstrack, mediaStream)
+    tpcLog(`TPC add track tid:${mstrack.id} msid:${mediaStream.id}`)
     this._addedStreams.push(mediaStream);
 };
 

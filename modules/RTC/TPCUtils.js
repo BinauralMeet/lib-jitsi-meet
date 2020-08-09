@@ -208,7 +208,7 @@ export class TPCUtils {
     * false otherwise.
     */
     addTrack(localTrack, isInitiator = true) {
-        const track = localTrack.getTrack();
+        const mstrack = localTrack.getTrack();
 
         if (isInitiator) {
             // Use pc.addTransceiver() for the initiator case when local tracks are getting added
@@ -222,17 +222,17 @@ export class TPCUtils {
             if (!browser.isFirefox()) {
                 transceiverInit.sendEncodings = this._getStreamEncodings(localTrack);
             }
-            this.pc.peerconnection.addTransceiver(track, transceiverInit);
+            this.pc.peerconnection.addTransceiver(mstrack, transceiverInit);
         } else {
             // Use pc.addTrack() for responder case so that we can re-use the m-lines that were created
             // when setRemoteDescription was called. pc.addTrack() automatically  attaches to any existing
             // unused "recv-only" transceiver.
-            this.pc.peerconnection.addTrack(track);
+            this.pc.peerconnection.addTrack(mstrack);
         }
 
         // Construct the simulcast stream constraints for the newly added track.
         if (localTrack.isVideoTrack() && localTrack.videoType === VideoType.CAMERA && this.pc.isSimulcastOn()) {
-            this._setSimulcastStreamConstraints(localTrack.getTrack());
+            this._setSimulcastStreamConstraints(mstrack);
         }
     }
 
@@ -244,7 +244,7 @@ export class TPCUtils {
      */
     addTrackUnmute(localTrack) {
         const mediaType = localTrack.getType();
-        const track = localTrack.getTrack();
+        const mstrack = localTrack.getTrack();
 
         // The assumption here is that the first transceiver of the specified
         // media type is that of the local track.
@@ -260,7 +260,7 @@ export class TPCUtils {
         // will be set to 'recvonly'. Use addStream here so that a MSID is generated for the stream.
         if (transceiver.direction === 'recvonly') {
             //this.pc.peerconnection.addStream(localTrack.getOriginalStream());
-            this.pc.peerconnection.addTrack(localTrack, localTrack.getOriginalStream())
+            this.pc.peerconnection.addTrack(mstrack, localTrack.getOriginalStream())
             tpcLog(`TPCUtils TRACK_ADD ${localTrack} ${localTrack.getUsageLabel()} tid:${localTrack.getTrackId()}`)
             this.setEncodings(localTrack);
             this.pc.localTracks.set(localTrack.rtcId, localTrack);
