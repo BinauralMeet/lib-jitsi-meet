@@ -79,9 +79,9 @@ export default class SignalingLayerImpl extends SignalingLayer {
     /**
      * @inheritDoc
      */
-    getPeerMediaInfo(owner, mediaType) {
+    getPeerMediaInfo(owner, mediaType, ssrc) {
         if (this.chatRoom) {
-            return this.chatRoom.getMediaPresenceInfo(owner, mediaType);
+            return this.chatRoom.getMediaPresenceInfo(owner, mediaType, ssrc);
         }
         logger.error('Requested peer media info, before room was set');
     }

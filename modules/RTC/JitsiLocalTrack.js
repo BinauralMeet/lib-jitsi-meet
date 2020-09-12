@@ -24,6 +24,7 @@ import {
     createNoDataFromSourceEvent
 } from '../../service/statistics/AnalyticsEvents';
 import Statistics from '../statistics/statistics';
+import TraceablePeerConnection from './TraceablePeerConnection';
 
 const logger = getLogger(__filename);
 
@@ -918,6 +919,9 @@ export default class JitsiLocalTrack extends JitsiTrack {
      * @return {string}
      */
     toString() {
-        return `LocalTrack[${this.rtcId},${this.getType()}]`;
+        const tpc = this.conference ? this.conference.getActivePeerConnection() : null;
+        const ssrcInfo = tpc ? tpc.localSSRCs.get(this.rtcId) : 0;
+        const ssrc = ssrcInfo ? ssrcInfo.ssrcs.length ? ssrcInfo.ssrcs[0] : 0 : 0;
+        return `LocalTrack[${this.rtcId},${this.getType()}, ssrc=${ssrc}]`;
     }
 }

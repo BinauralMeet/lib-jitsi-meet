@@ -37,7 +37,7 @@ export default class SignalingLayer extends Listenable {
      * info or <tt>null</tt> either if there is no presence available for given
      * JID or if the media type given is invalid.
      */
-    getPeerMediaInfo(owner, mediaType) { // eslint-disable-line no-unused-vars
+    getPeerMediaInfo(owner, mediaType, ssrc) { // eslint-disable-line no-unused-vars
         throw new Error('not implemented');
     }
 }
