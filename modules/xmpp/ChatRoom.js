@@ -1561,9 +1561,9 @@ export default class ChatRoom extends Listenable {
             const videoTypeNode = filterNodeFromPresenceJSON(pres, 'videoTypes');
             if (videoTypeNode.length > 0){
                 const videoTypes = JSON.parse(videoTypeNode[0].value);
-                const videoType = videoTypes.find(e => e[0] === ssrc)[1];
-                if (videoType) {
-                    data.videoType = videoType;
+                const found = videoTypes.find(e => e[0] === ssrc);
+                if (found) {
+                    data.videoType = found[1];
                 }else{
                     console.error(`VideoType for ssrc: ${ssrc} is not in videoTypes ${JSON.stringify(videoTypes)}`);
                 }
