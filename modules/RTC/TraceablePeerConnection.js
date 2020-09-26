@@ -2811,7 +2811,11 @@ TraceablePeerConnection.prototype.getPrimarySsrc = function(rtcId) {
 }
 
 TraceablePeerConnection.prototype.updatePresence = function(track) {
-    track.conference.sendCommand('videoTypes', {
-        value: JSON.stringify(Array.from(this.localVideoTypes.entries()))
-    });
+    if (track.conference){
+        track.conference.sendCommand('videoTypes', {
+            value: JSON.stringify(Array.from(this.localVideoTypes.entries()))
+        });
+    }else{
+        console.warn(`TraceablePeerConnection.updatePresence(): Track ${track} does not have a reference to a conference.`);
+    }
 }
