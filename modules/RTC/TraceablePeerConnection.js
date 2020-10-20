@@ -562,7 +562,7 @@ TraceablePeerConnection.prototype._peerMutedChanged = function(
     if (track.length) {
         // NOTE 1 track per media type is assumed
         track[0].setMute(isMuted);
-    }
+        }
 };
 
 /**
@@ -1426,11 +1426,11 @@ TraceablePeerConnection.prototype._injectSsrcGroupForUnifiedSimulcast
                     ssrcs.push(group.ssrcs.split(' ')[0]);
                 });
             } else {
-                video.ssrcs.forEach(ssrc => {
-                    if (ssrc.attribute === 'msid') {
-                        ssrcs.push(ssrc.id);
-                    }
-                });
+            video.ssrcs.forEach(ssrc => {
+                if (ssrc.attribute === 'msid') {
+                    ssrcs.push(ssrc.id);
+                }
+            });
             }
             if (video.ssrcGroups.find(group => group.semantics === 'SIM')) {
                 // Group already exists, no need to do anything
@@ -1615,46 +1615,46 @@ TraceablePeerConnection.prototype.addTrack = function(track, isInitiator = false
         // TODO - addTransceiver doesn't generate a MSID for the stream, which is needed for signaling
         // the ssrc to Jicofo. Switch to using UUID as MSID when addTransceiver is used in Unified plan
         // JVB connection case as well.
-        const webrtcStream = track.getOriginalStream();
+    const webrtcStream = track.getOriginalStream();
 
-        if (webrtcStream) {
-            this._addStream(webrtcStream);
+    if (webrtcStream) {
+        this._addStream(webrtcStream);
 
-        // It's not ok for a track to not have a WebRTC stream if:
-        } else if (!browser.doesVideoMuteByStreamRemove()
-                    || track.isAudioTrack()
-                    || (track.isVideoTrack() && !track.isMuted())) {
+    // It's not ok for a track to not have a WebRTC stream if:
+    } else if (!browser.doesVideoMuteByStreamRemove()
+                || track.isAudioTrack()
+                || (track.isVideoTrack() && !track.isMuted())) {
             return Promise.reject(new Error(`${this} no WebRTC stream for: ${track}`));
+    }
+
+    // Muted video tracks do not have WebRTC stream
+    if (browser.usesPlanB() && browser.doesVideoMuteByStreamRemove()
+            && track.isVideoTrack() && track.isMuted()) {
+        const ssrcInfo = this.generateNewStreamSSRCInfo(track);
+
+        this.sdpConsistency.setPrimarySsrc(ssrcInfo.ssrcs[0]);
+        const simGroup
+            = ssrcInfo.groups.find(groupInfo => groupInfo.semantics === 'SIM');
+
+        if (simGroup) {
+            this.simulcast.setSsrcCache(simGroup.ssrcs);
         }
+        const fidGroups
+            = ssrcInfo.groups.filter(
+                groupInfo => groupInfo.semantics === 'FID');
 
-        // Muted video tracks do not have WebRTC stream
-        if (browser.usesPlanB() && browser.doesVideoMuteByStreamRemove()
-                && track.isVideoTrack() && track.isMuted()) {
-            const ssrcInfo = this.generateNewStreamSSRCInfo(track);
+        if (fidGroups) {
+            const rtxSsrcMapping = new Map();
 
-            this.sdpConsistency.setPrimarySsrc(ssrcInfo.ssrcs[0]);
-            const simGroup
-                = ssrcInfo.groups.find(groupInfo => groupInfo.semantics === 'SIM');
+            fidGroups.forEach(fidGroup => {
+                const primarySsrc = fidGroup.ssrcs[0];
+                const rtxSsrc = fidGroup.ssrcs[1];
 
-            if (simGroup) {
-                this.simulcast.setSsrcCache(simGroup.ssrcs);
-            }
-            const fidGroups
-                = ssrcInfo.groups.filter(
-                    groupInfo => groupInfo.semantics === 'FID');
-
-            if (fidGroups) {
-                const rtxSsrcMapping = new Map();
-
-                fidGroups.forEach(fidGroup => {
-                    const primarySsrc = fidGroup.ssrcs[0];
-                    const rtxSsrc = fidGroup.ssrcs[1];
-
-                    rtxSsrcMapping.set(primarySsrc, rtxSsrc);
-                });
-                this.rtxModifier.setSsrcCache(rtxSsrcMapping);
-            }
+                rtxSsrcMapping.set(primarySsrc, rtxSsrc);
+            });
+            this.rtxModifier.setSsrcCache(rtxSsrcMapping);
         }
+    }
     }
 
     let promiseChain = Promise.resolve();
@@ -2122,7 +2122,7 @@ TraceablePeerConnection.prototype.setMaxBitRate = function() {
         || (planBScreenSharing && this.options.capScreenshareBitrate)
         || browser.usesUnifiedPlan())) {
         return Promise.resolve();
-    }
+                }
 
     const presenterEnabled = localVideoTrack._originalStream
         && localVideoTrack._originalStream.id !== localVideoTrack.getStreamId();
@@ -2138,8 +2138,8 @@ TraceablePeerConnection.prototype.setMaxBitRate = function() {
     }
 
     if (this.isSimulcastOn()) {
-        for (const encoding in parameters.encodings) {
-            if (parameters.encodings.hasOwnProperty(encoding)) {
+                for (const encoding in parameters.encodings) {
+                    if (parameters.encodings.hasOwnProperty(encoding)) {
                 let bitrate;
 
                 if (planBScreenSharing) {
@@ -2157,13 +2157,13 @@ TraceablePeerConnection.prototype.setMaxBitRate = function() {
                         : undefined;
                 } else {
                     bitrate = this.tpcUtils.localStreamEncodingsConfig[encoding].maxBitrate;
-                }
+                    }
 
                 logger.info(`${this} Setting a max bitrate of ${bitrate} bps on layer `
                     + `${this.tpcUtils.localStreamEncodingsConfig[encoding].rid}`);
                 parameters.encodings[encoding].maxBitrate = bitrate;
+                }
             }
-        }
     } else {
         // Do not change the max bitrate for desktop tracks in non-simulcast mode.
         let bitrate = this.videoBitrates.high;
@@ -2202,14 +2202,14 @@ TraceablePeerConnection.prototype.setRemoteDescription = function(description) {
             // capScreenshareBitrate is disabled.
             const enableConferenceFlag = !(this.options.capScreenshareBitrate && !hasCameraTrack(this));
 
-            // eslint-disable-next-line no-param-reassign
+        // eslint-disable-next-line no-param-reassign
             description = this.simulcast.mungeRemoteDescription(description, enableConferenceFlag);
-            this.trace(
-                'setRemoteDescription::postTransform (simulcast)',
-                dumpSDP(description));
+        this.trace(
+            'setRemoteDescription::postTransform (simulcast)',
+            dumpSDP(description));
         }
 
-        // eslint-disable-next-line no-param-reassign
+            // eslint-disable-next-line no-param-reassign
         description = normalizePlanB(description);
     } else {
         const currentDescription = this.peerconnection.remoteDescription;
@@ -2290,16 +2290,16 @@ TraceablePeerConnection.prototype.setSenderVideoConstraint = function(frameHeigh
     if (!localVideoTrack || localVideoTrack.isMuted() || localVideoTrack.videoType !== VideoType.CAMERA) {
         return Promise.resolve();
     }
-    const videoSender = this.findSenderByKind(MediaType.VIDEO);
+                const videoSender = this.findSenderByKind(MediaType.VIDEO);
 
-    if (!videoSender) {
+                if (!videoSender) {
         return Promise.resolve();
-    }
-    const parameters = videoSender.getParameters();
+                }
+                const parameters = videoSender.getParameters();
 
-    if (!parameters || !parameters.encodings || !parameters.encodings.length) {
+                if (!parameters || !parameters.encodings || !parameters.encodings.length) {
         return Promise.resolve();
-    }
+                }
 
     if (this.isSimulcastOn()) {
         // Determine the encodings that need to stay enabled based on the new frameHeight provided.
@@ -2316,11 +2316,11 @@ TraceablePeerConnection.prototype.setSenderVideoConstraint = function(frameHeigh
         if (newHeight > 0 && ldStreamIndex !== -1) {
             encodingsEnabledState[ldStreamIndex] = true;
         }
-        for (const encoding in parameters.encodings) {
-            if (parameters.encodings.hasOwnProperty(encoding)) {
-                parameters.encodings[encoding].active = encodingsEnabledState[encoding];
-            }
-        }
+                for (const encoding in parameters.encodings) {
+                    if (parameters.encodings.hasOwnProperty(encoding)) {
+                        parameters.encodings[encoding].active = encodingsEnabledState[encoding];
+                    }
+                }
     } else if (newHeight > 0) {
         parameters.encodings[0].scaleResolutionDownBy = localVideoTrack.resolution >= newHeight
             ? Math.floor(localVideoTrack.resolution / newHeight)
@@ -2333,16 +2333,16 @@ TraceablePeerConnection.prototype.setSenderVideoConstraint = function(frameHeigh
 
     logger.info(`${this} setting max height of ${newHeight}, encodings: ${JSON.stringify(parameters.encodings)}`);
 
-    return videoSender.setParameters(parameters).then(() => {
-        localVideoTrack.maxEnabledResolution = newHeight;
-        this.eventEmitter.emit(RTCEvents.LOCAL_TRACK_MAX_ENABLED_RESOLUTION_CHANGED, localVideoTrack);
+                return videoSender.setParameters(parameters).then(() => {
+                    localVideoTrack.maxEnabledResolution = newHeight;
+                    this.eventEmitter.emit(RTCEvents.LOCAL_TRACK_MAX_ENABLED_RESOLUTION_CHANGED, localVideoTrack);
 
         // Max bitrate needs to be reconfigured on the sender in p2p/non-simulcast case if needed when
         // the send resolution changes.
         if (this.isP2P || !this.isSimulcastOn()) {
             return this.setMaxBitRate();
-        }
-    });
+            }
+        });
 };
 
 /**

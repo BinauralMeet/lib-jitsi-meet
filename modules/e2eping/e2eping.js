@@ -245,6 +245,8 @@ export default class E2ePing {
     dataChannelOpened() {
         this.isDataChannelOpen = true;
 
+        //	console.log(`dataChannelOpened for `, this.participants)
+
         // We don't want to wait the whole interval before sending the first
         // request, but we can't send it immediately after the participant joins
         // either, because our data channel might not have initialized.

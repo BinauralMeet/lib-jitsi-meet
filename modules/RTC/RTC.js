@@ -951,6 +951,13 @@ export default class RTC extends Listenable {
         }
     }
 
+    setPerceptibles(value){
+        if (this._channel && this._channel.isOpen()) {
+            this._channel.sendSetPercieveEventMessage(value);
+        }
+        this.eventEmitter.emit(RTCEvents.PERCEPTIBLES_CHANGED, value);
+    }
+
     /**
      * Indicates if the endpoint id is currently included in the last N.
      * @param {string} id The endpoint id that we check for last N.
