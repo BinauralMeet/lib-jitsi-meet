@@ -1380,6 +1380,11 @@ JitsiConference.prototype.setLastN = function(lastN) {
     }
 };
 
+
+JitsiConference.prototype.setPerceptibles = function(perceptibles) {
+    this.rtc.setPerceptibles(perceptibles);
+};
+
 /**
  * Checks if the participant given by participantId is currently included in
  * the last N.
