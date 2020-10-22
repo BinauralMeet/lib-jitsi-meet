@@ -734,10 +734,25 @@ export default class ChatRoom extends Listenable {
                 this.eventEmitter.emit(XMPPEvents.PHONE_NUMBER_CHANGED);
                 break;
             }
+            //  hasevr video types as presence  ------------------------------------ 
+            case 'videoTypes': {
+                const att = node.attributes;
+                if (!att) {
+                    break;
+                }
+                const videoTypes = JSON.parse(node.value);
+                if (videoTypes && videoTypes.length){
+                    //  console.log(`PARTICIPANT_VIDEO_TYPE_CHANGED event emit for ${from}`, videoTypes)
+                    this.eventEmitter.emit(XMPPEvents.PARTICIPANT_VIDEO_TYPE_CHANGED, from, videoTypes);
+                }
+                break;
+            }
+            //  --------------------------------------------------------------------
             default:
                 this.processNode(node, from);
             }
         }
+
 
         // Trigger status message update if necessary
         if (hasStatusUpdate) {
@@ -1547,8 +1562,8 @@ export default class ChatRoom extends Listenable {
      * info or <tt>null</tt> either if there is no presence available or if
      * the media type given is invalid.
      */
-    //  EXT_MULTI_VIDEO todo: this must be handle multiple video tracks
-     getMediaPresenceInfo(endpointId, mediaType, ssrc) {
+    //  EXT_MULTI_VIDEO this handles multiple video tracks
+    getMediaPresenceInfo(endpointId, mediaType, ssrc) {
         // Will figure out current muted status by looking up owner's presence
         const pres = this.lastPresences[`${this.roomjid}/${endpointId}`];
 
