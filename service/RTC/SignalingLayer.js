@@ -40,4 +40,13 @@ export default class SignalingLayer extends Listenable {
     getPeerMediaInfo(owner, mediaType, ssrc) { // eslint-disable-line no-unused-vars
         throw new Error('not implemented');
     }
+
+    /** 
+     * Extension for multiple tracks by hasevr
+     * Send all video types in TPC (peerconnnection)
+     * @param {Map<ssrc, string>} videoTypes The map of videoType to send as presence by addToPresence().
+    */
+    sendVideoTypes(videoTypes){
+        throw new Error('not implemented');
+    }
 }

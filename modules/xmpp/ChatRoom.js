@@ -734,20 +734,6 @@ export default class ChatRoom extends Listenable {
                 this.eventEmitter.emit(XMPPEvents.PHONE_NUMBER_CHANGED);
                 break;
             }
-            //  hasevr video types as presence  ------------------------------------ 
-            case 'videoTypes': {
-                const att = node.attributes;
-                if (!att) {
-                    break;
-                }
-                const videoTypes = JSON.parse(node.value);
-                if (videoTypes && videoTypes.length){
-                    //  console.log(`PARTICIPANT_VIDEO_TYPE_CHANGED event emit for ${from}`, videoTypes)
-                    this.eventEmitter.emit(XMPPEvents.PARTICIPANT_VIDEO_TYPE_CHANGED, from, videoTypes);
-                }
-                break;
-            }
-            //  --------------------------------------------------------------------
             default:
                 this.processNode(node, from);
             }
@@ -1577,11 +1563,23 @@ export default class ChatRoom extends Listenable {
         };
         let mutedNode = null;
 
+        //  hasevr
+        const videoTypeNode = filterNodeFromPresenceJSON(pres, 'videoTypes');
+        if (videoTypeNode.length > 0){
+            const videoTypes = JSON.parse(videoTypeNode[0].value);
+            const found = videoTypes.find(e => e[0] === ssrc);
+            if (found) {
+                data.videoType = found[1];
+            }else{
+                console.error(`VideoType for ssrc: ${ssrc} is not in videoTypes ${JSON.stringify(videoTypes)}`);
+            }
+        }
+
         if (mediaType === MediaType.AUDIO) {
             mutedNode = filterNodeFromPresenceJSON(pres, 'audiomuted');
         } else if (mediaType === MediaType.VIDEO) {
             mutedNode = filterNodeFromPresenceJSON(pres, 'videomuted');
-            /*  
+            /*  removed by hasevr .... audio tracks also need videoType
             const videoTypeNode = filterNodeFromPresenceJSON(pres, 'videoType');
 
             console.log("getMediaPresenceInfo: pres:", pres)
@@ -1590,17 +1588,6 @@ export default class ChatRoom extends Listenable {
                 data.videoType = videoTypeNode[0].value;
             }
              */
-            //  hasevr
-            const videoTypeNode = filterNodeFromPresenceJSON(pres, 'videoTypes');
-            if (videoTypeNode.length > 0){
-                const videoTypes = JSON.parse(videoTypeNode[0].value);
-                const found = videoTypes.find(e => e[0] === ssrc);
-                if (found) {
-                    data.videoType = found[1];
-                }else{
-                    console.error(`VideoType for ssrc: ${ssrc} is not in videoTypes ${JSON.stringify(videoTypes)}`);
-                }
-            }
         } else {
             logger.error(`Unsupported media type: ${mediaType}`);
 

@@ -340,9 +340,10 @@ JitsiConference.prototype._init = function(options = {}) {
     this._sendConferenceJoinAnalyticsEvent = this._sendConferenceJoinAnalyticsEvent.bind(this);
     this.room.addListener(XMPPEvents.MEETING_ID_SET, this._sendConferenceJoinAnalyticsEvent);
 
+/*  //  hasevr
     this._remoteVideoTypeChanged = this._remoteVideoTypeChanged.bind(this);
     this.room.addListener(XMPPEvents.PARTICIPANT_VIDEO_TYPE_CHANGED, this._remoteVideoTypeChanged)
-
+*/
     this.e2eping = new E2ePing(
         this,
         config,
@@ -3436,6 +3437,7 @@ JitsiConference.prototype._sendConferenceLeftAnalyticsEvent = function() {
 };
 
 //  hasevr  videoTypes as presence.
+/*
 JitsiConference.prototype._remoteVideoTypeChanged = function(from, videoTypes){
     const peerConnection = this.getActivePeerConnection();
     if (peerConnection){
@@ -3447,6 +3449,7 @@ JitsiConference.prototype._remoteVideoTypeChanged = function(from, videoTypes){
         console.log(`_remoteVideoTypeChanged: peerConnection not defined yet.`);
     }
 }
+*/
 
 /**
  * Restarts all active media sessions.

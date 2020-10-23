@@ -532,12 +532,10 @@ TraceablePeerConnection.prototype.isSimulcastOn = function() {
  * @param {VideoType} videoType the new value
  * @private
  */
+/** Original impl, not work for multiple tracks. replaced by hasevr
 TraceablePeerConnection.prototype._peerVideoTypeChanged = function(
         endpointId,
         videoType) {
-    //  hasevr in multitrack extesion. this should not be called.
-    console.error('_peerVideoTypeChanged for old implementation called.')
-
     // Check if endpointId has a value to avoid action on random track
     if (!endpointId) {
         logger.error(`No endpointID on peerVideoTypeChanged ${this}`);
@@ -551,6 +549,51 @@ TraceablePeerConnection.prototype._peerVideoTypeChanged = function(
         videoTrack[0]._setVideoType(videoType);
     }
 };
+*/
+TraceablePeerConnection.prototype._peerVideoTypeChanged = function(
+    endpointId,
+    videoTypeJSONString) {
+    // Check if endpointId has a value to avoid action on random track
+    if (!endpointId) {
+        logger.error(`No endpointID on peerVideoTypeChanged ${this}`);
+
+        return;
+    }
+
+    const remoteVideoTypes = JSON.parse(videoTypeJSONString);
+    const remoteTrackMap = this.remoteTrackMaps.get(endpointId);
+    if (remoteTrackMap){
+        for(const remoteVideoType of remoteVideoTypes){
+            const ssrc = remoteVideoType[0];
+            const videoType = remoteVideoType[1];
+            let found = false
+            for(const remoteTrack of remoteTrackMap.values()){
+                if (remoteTrack.ssrc === ssrc){
+                    found = true;
+                    if (remoteTrack.videoType === undefined){
+                        console.log(`TPC ep:${endpointId} ssrc=${remoteTrack.ssrc} videoType ''->'${videoType}'.`)
+                        remoteTrack.videoType = videoType
+                        this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_ADDED, remoteTrack, this);    //  Emit REMOTE_TRACK_ADDED after videoType assigned
+                    }else if (remoteTrack.videoType !== videoType){
+                        console.log(`TPC ep:${endpointId} ssrc=${remoteTrack.ssrc} videoType '${remoteTrack.videoType}'->'${videoType}'.`)
+                        this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_VIDEOTYPE_CHANGING, remoteTrack, videoType, this);
+                        const prevType = remoteTrack.videoType
+                        remoteTrack.videoType = videoType
+                        this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_VIDEOTYPE_CHANGED, remoteTrack, prevType, this);
+                    }else{
+                        console.log(`TPC ep:${endpointId} ssrc=${remoteTrack.ssrc} videoType '${videoType}'.`)
+                    }
+                }
+            }
+            if (!found){
+                console.error(`TPC _peerVideoTypeChanged: A track with ssrc ${ssrc} is not found in endpoint ${endpointId}`);
+            }
+        }
+    }else{
+        console.warn(`remoteTrackMap for ${endpointId} is not defined`);
+    }
+};
+
 
 /**
  * Handles remote track mute / unmute events.
@@ -985,6 +1028,7 @@ TraceablePeerConnection.prototype._createRemoteTrack = function(
 };
 
 //  hasevr
+/*
 TraceablePeerConnection.prototype._remoteVideoTypeChanged = function (endpointId, remoteVideoTypes) {
     //  console.log('TPC _remoteVideoTypeChanged called.')
     const remoteTrackMap = this.remoteTrackMaps.get(endpointId);
@@ -1019,6 +1063,7 @@ TraceablePeerConnection.prototype._remoteVideoTypeChanged = function (endpointId
         console.warn(`remoteTrackMap for ${endpointId} is not defined`);
     }
 }
+*/
 
 /* eslint-enable max-params */
 
@@ -2922,7 +2967,7 @@ TraceablePeerConnection.prototype.addLocalVideoType = function(track) {
         const ssrc = this.getPrimarySsrc(track.rtcId);
         if (ssrc){
             this.localVideoTypes.set(ssrc, track.videoType);
-            this.updatePresence(track);
+            this.sendVideoTypes();
         }
     }
 }
@@ -2931,7 +2976,7 @@ TraceablePeerConnection.prototype.removeLocalVideoType = function(track) {
         const ssrc = this.getPrimarySsrc(track.rtcId);
         if (ssrc){
             this.localVideoTypes.delete(ssrc);
-            this.updatePresence(track);
+            this.sendVideoTypes();
         }
     }
 }
@@ -2942,12 +2987,6 @@ TraceablePeerConnection.prototype.getPrimarySsrc = function(rtcId) {
     return ssrc;
 }
 
-TraceablePeerConnection.prototype.updatePresence = function(track) {
-    if (track.conference){
-        track.conference.sendCommand('videoTypes', {
-            value: JSON.stringify(Array.from(this.localVideoTypes.entries()))
-        });
-    }else{
-        console.warn(`TraceablePeerConnection.updatePresence(): Track ${track} does not have a reference to a conference.`);
-    }
+TraceablePeerConnection.prototype.sendVideoTypes = function() {
+    this.signalingLayer.sendVideoTypes(this.localVideoTypes)
 }

@@ -109,4 +109,17 @@ export default class SignalingLayerImpl extends SignalingLayer {
         }
         this.ssrcOwners.set(ssrc, endpointId);
     }
+
+    /**
+     * @inheritDoc
+     */
+    sendVideoTypes(videoTypes){
+        if (this.chatRoom) {
+            this.chatRoom.addToPresence('videoTypes', {
+                value: JSON.stringify(Array.from(videoTypes.entries()))
+            });
+        }else{
+            logger.error('Requested to send videoTypes to peer, before room was set.');
+        }
+    }
 }
