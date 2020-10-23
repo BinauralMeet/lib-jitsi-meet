@@ -65,6 +65,12 @@ const RTCEvents = {
     // (currently implemented for local tracks only)
     REMOTE_TRACK_UNMUTE: 'rtc.remote_track_unmute',
 
+    ///  hasevr notify before videoType changing.
+    REMOTE_TRACK_VIDEOTYPE_CHANGING: 'rtc.remote_track_videotype_changing',
+
+    ///  hasevr notify after videoType changed.
+    REMOTE_TRACK_VIDEOTYPE_CHANGED: 'rtc.remote_track_videotype_changed',
+
     /**
      * Indicates error while set local description.
      */

@@ -49,9 +49,10 @@ export default class SignalingLayerImpl extends SignalingLayer {
                 'audiomuted', this._audioMuteHandler);
             oldChatRoom.removePresenceListener(
                 'videomuted', this._videoMuteHandler);
-            oldChatRoom.removePresenceListener(
-                'videoType', this._videoTypeHandler);
-        }
+            //  hasevr for multi track extenstion
+            //  oldChatRoom.removePresenceListener('videoType', this._videoTypeHandler);
+                oldChatRoom.removePresenceListener('videoTypes', this._videoTypeHandler);
+            }
         if (room) {
             // SignalingEvents
             this._audioMuteHandler = (node, from) => {
@@ -73,7 +74,9 @@ export default class SignalingLayerImpl extends SignalingLayer {
                     SignalingEvents.PEER_VIDEO_TYPE_CHANGED,
                     from, node.value);
             };
-            room.addPresenceListener('videoType', this._videoTypeHandler);
+            //  hasevr for multi track extenstion
+            //  room.addPresenceListener('videoType', this._videoTypeHandler);
+            room.addPresenceListener('videoTypes', this._videoTypeHandler);
         }
     }
 

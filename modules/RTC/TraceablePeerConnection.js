@@ -233,6 +233,12 @@ export default function TraceablePeerConnection(
 
     this.peerconnection
         = new RTCUtils.RTCPeerConnectionType(iceConfig, safeConstraints);
+    //  hasevr for debug
+    if (window.d){
+        window.d.tpc = this
+        window.d.pc = this.peerconnection
+    }
+
     //this.tpcUtils = new TPCUtils(this);
 
     // The standard video bitrates are used in Unified plan when switching
@@ -529,6 +535,9 @@ TraceablePeerConnection.prototype.isSimulcastOn = function() {
 TraceablePeerConnection.prototype._peerVideoTypeChanged = function(
         endpointId,
         videoType) {
+    //  hasevr in multitrack extesion. this should not be called.
+    console.error('_peerVideoTypeChanged for old implementation called.')
+
     // Check if endpointId has a value to avoid action on random track
     if (!endpointId) {
         logger.error(`No endpointID on peerVideoTypeChanged ${this}`);
@@ -988,14 +997,17 @@ TraceablePeerConnection.prototype._remoteVideoTypeChanged = function (endpointId
                 if (remoteTrack.ssrc === ssrc){
                     found = true;
                     if (remoteTrack.videoType === undefined){
+                        console.log(`TPC ep:${endpointId} ssrc=${remoteTrack.ssrc} videoType ''->'${videoType}'.`)
                         remoteTrack.videoType = videoType
-                        this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_ADDED, remoteTrack, this);
-                        console.log(`TPC ep:${endpointId} ssrc=${remoteTrack.ssrc} videoType ''->'${remoteTrack.videoType}'.`)
+                        this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_ADDED, remoteTrack, this);    //  Emit REMOTE_TRACK_ADDED after videoType assigned
                     }else if (remoteTrack.videoType !== videoType){
                         console.log(`TPC ep:${endpointId} ssrc=${remoteTrack.ssrc} videoType '${remoteTrack.videoType}'->'${videoType}'.`)
+                        this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_VIDEOTYPE_CHANGING, remoteTrack, videoType, this);
+                        const prevType = remoteTrack.videoType
                         remoteTrack.videoType = videoType
+                        this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_VIDEOTYPE_CHANGED, remoteTrack, prevType, this);
                     }else{
-                        console.log(`TPC ep:${endpointId} ssrc=${remoteTrack.ssrc} videoType '${remoteTrack.videoType}'.`)
+                        console.log(`TPC ep:${endpointId} ssrc=${remoteTrack.ssrc} videoType '${videoType}'.`)
                     }
                 }
             }
@@ -1771,6 +1783,8 @@ TraceablePeerConnection.prototype.addTrackUnmute = function(track) {
 
     this._addStream(webRtcStream);
 
+    this.addLocalVideoType(track)
+
     return Promise.resolve(true);
 };
 
@@ -1959,6 +1973,8 @@ TraceablePeerConnection.prototype.removeTrackMute = function(localTrack) {
         // Abort - nothing to be done here
         return Promise.reject('Track not found in the peerconnection');
     }
+
+    this.removeLocalVideoType(localTrack)
 
     if (browser.usesUnifiedPlan()) {
         return this.tpcUtils.removeTrackMute(localTrack);

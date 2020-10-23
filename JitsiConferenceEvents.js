@@ -312,6 +312,24 @@ export const TRACK_MUTE_CHANGED = 'conference.trackMuteChanged';
 export const TRACK_REMOVED = 'conference.trackRemoved';
 
 /**
+ * The videoType of the media track is chagning (notify before). The event provides the
+ * following parameters to its listeners:
+ *
+ * @param {JitsiTrack} track the JitsiTrack
+ * @param {string} newType the videoType changing to.
+ */
+export const REMOTE_TRACK_VIDEOTYPE_CHANGING = 'conference.remoteTrackVideotypeChanging';
+
+/**
+ * The videoType of the media track was chagned (notify after). The event provides the
+ * following parameters to its listeners:
+ *
+ * @param {JitsiTrack} track the JitsiTrack
+ * @param {string} prevType the videoType before changed.
+ */
+export const REMOTE_TRACK_VIDEOTYPE_CHANGED = 'conference.remoteTrackVideotypeChanged';
+
+/**
  * Notifies for transcription status changes. The event provides the
  * following parameters to its listeners:
  *

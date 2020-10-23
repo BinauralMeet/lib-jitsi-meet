@@ -1147,6 +1147,7 @@ JitsiConference.prototype._setupNewTrack = function(newTrack) {
                 RTC.getEventDataForActiveDevice(device));
         }
     }
+    /*  hasevr  remote for multi track extension.
     if (newTrack.isVideoTrack()) {
         this.removeCommand('videoType');
         this.sendCommand('videoType', {
@@ -1156,6 +1157,7 @@ JitsiConference.prototype._setupNewTrack = function(newTrack) {
             }
         });
     }
+    */
     this.rtc.addLocalTrack(newTrack);
 
     // ensure that we're sharing proper "is muted" state
@@ -1829,6 +1831,26 @@ JitsiConference.prototype.onRemoteTrackRemoved = function(removedTrack) {
         }
     }, this);
 };
+
+/**
+ * Notifies this JitsiConference that the videoType of a JitsiRemoteTrack is changing soon.
+ *
+ * @param {JitsiRemoteTrack} track whose videoType has been changed. 
+ * @param {string} newType: videoType changing to . 
+ */
+JitsiConference.prototype.onRemoteTrackVideoTypeChanging = function(track, newType) {
+    this.eventEmitter.emit(JitsiConferenceEvents.REMOTE_TRACK_VIDEOTYPE_CHANGING, track, newType);
+}
+
+/**
+ * Notifies this JitsiConference that the videoType of a JitsiRemoteTrack was changed.
+ *
+ * @param {JitsiRemoteTrack} track whose videoType has been changed. 
+ * @param {string} prevType: previous videoType. 
+ */
+JitsiConference.prototype.onRemoteTrackVideoTypeChanged = function(track, prevType) {
+    this.eventEmitter.emit(JitsiConferenceEvents.REMOTE_TRACK_VIDEOTYPE_CHANGED, track, prevType);
+}
 
 /**
  * Handles an incoming call event for the P2P jingle session.
