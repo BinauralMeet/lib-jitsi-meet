@@ -1027,44 +1027,6 @@ TraceablePeerConnection.prototype._createRemoteTrack = function(
     }
 };
 
-//  hasevr
-/*
-TraceablePeerConnection.prototype._remoteVideoTypeChanged = function (endpointId, remoteVideoTypes) {
-    //  console.log('TPC _remoteVideoTypeChanged called.')
-    const remoteTrackMap = this.remoteTrackMaps.get(endpointId);
-    if (remoteTrackMap){
-        for(const remoteVideoType of remoteVideoTypes){
-            const ssrc = remoteVideoType[0];
-            const videoType = remoteVideoType[1];
-            let found = false
-            for(const remoteTrack of remoteTrackMap.values()){
-                if (remoteTrack.ssrc === ssrc){
-                    found = true;
-                    if (remoteTrack.videoType === undefined){
-                        console.log(`TPC ep:${endpointId} ssrc=${remoteTrack.ssrc} videoType ''->'${videoType}'.`)
-                        remoteTrack.videoType = videoType
-                        this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_ADDED, remoteTrack, this);    //  Emit REMOTE_TRACK_ADDED after videoType assigned
-                    }else if (remoteTrack.videoType !== videoType){
-                        console.log(`TPC ep:${endpointId} ssrc=${remoteTrack.ssrc} videoType '${remoteTrack.videoType}'->'${videoType}'.`)
-                        this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_VIDEOTYPE_CHANGING, remoteTrack, videoType, this);
-                        const prevType = remoteTrack.videoType
-                        remoteTrack.videoType = videoType
-                        this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_VIDEOTYPE_CHANGED, remoteTrack, prevType, this);
-                    }else{
-                        console.log(`TPC ep:${endpointId} ssrc=${remoteTrack.ssrc} videoType '${videoType}'.`)
-                    }
-                }
-            }
-            if (!found){
-                console.error(`TPC _remoteVideoTypeChanged: A track with ssrc ${ssrc} is not found in endpoint ${endpointId}`);
-            }
-        }
-    }else{
-        console.warn(`remoteTrackMap for ${endpointId} is not defined`);
-    }
-}
-*/
-
 /* eslint-enable max-params */
 
 /**
