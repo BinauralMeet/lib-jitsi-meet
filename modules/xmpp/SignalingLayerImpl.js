@@ -70,9 +70,13 @@ export default class SignalingLayerImpl extends SignalingLayer {
             room.addPresenceListener('videomuted', this._videoMuteHandler);
 
             this._videoTypeHandler = (node, from) => {
-                this.eventEmitter.emit(
-                    SignalingEvents.PEER_VIDEO_TYPE_CHANGED,
-                    from, node.value);
+                const localId = this.chatRoom && this.chatRoom.myroomjid ? 
+                    Strophe.getResourceFromJid(this.chatRoom.myroomjid) : null;
+                if (localId !== from){
+                    this.eventEmitter.emit(
+                        SignalingEvents.PEER_VIDEO_TYPE_CHANGED,
+                        from, node.value);
+                }
             };
             //  hasevr for multi track extenstion
             //  room.addPresenceListener('videoType', this._videoTypeHandler);

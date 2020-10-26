@@ -73,6 +73,8 @@ export default class SdpConsistency {
      *  with ssrcs consistent with this class' cache
      */
     makeVideoPrimarySsrcsConsistent(sdpStr) {
+        return sdpStr;  //  hasevr EXT_MULTI_VIDEO: We do have multiple SSRCs and do not need consistency
+		/*
         const sdpTransformer = new SdpTransformWrap(sdpStr);
         const videoMLine = sdpTransformer.selectMedia('video');
 
@@ -137,5 +139,6 @@ export default class SdpConsistency {
         }
 
         return sdpTransformer.toRawSDP();
+		*/
     }
 }
