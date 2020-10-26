@@ -79,6 +79,8 @@ export default function TraceablePeerConnection(
         isP2P,
         options) {
 
+    this.remoteVideoTypeMap = new Map() //  hasevr  Map<endpointId, [ssrc,videoType][]>
+
     /**
      * Indicates whether or not this peer connection instance is actively
      * sending/receiving audio media. When set to <tt>false</tt> the SDP audio
@@ -559,6 +561,7 @@ TraceablePeerConnection.prototype._peerVideoTypeChanged = function(
     }
 
     const remoteVideoTypes = JSON.parse(videoTypeJSONString);
+    this.remoteVideoTypeMap.set(endpointId, remoteVideoTypes)
     const remoteTrackMap = this.remoteTrackMaps.get(endpointId);
     if (remoteTrackMap){
         let str=''; 
@@ -570,34 +573,29 @@ TraceablePeerConnection.prototype._peerVideoTypeChanged = function(
         for(const remoteVideoType of remoteVideoTypes){
             const ssrc = remoteVideoType[0];
             const videoType = remoteVideoType[1];
-            let found = false
-            for(const remoteTrack of remoteTrackMap.values()){
-                if (remoteTrack.ssrc === ssrc){
-                    found = true;
-                    if (remoteTrack.videoType === undefined){
-                        //  console.log(`TPC ep:${endpointId} ssrc=${remoteTrack.ssrc} videoType ''->'${videoType}'.`)
-                        remoteTrack.videoType = videoType
-                        this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_ADDED, remoteTrack, this);    //  Emit REMOTE_TRACK_ADDED after videoType assigned
-                    }else if (remoteTrack.videoType !== videoType){
-                        //  console.log(`TPC ep:${endpointId} ssrc=${remoteTrack.ssrc} videoType '${remoteTrack.videoType}'->'${videoType}'.`)
-                        this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_VIDEOTYPE_CHANGING, remoteTrack, videoType, this);
-                        const prevType = remoteTrack.videoType
-                        remoteTrack.videoType = videoType
-                        this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_VIDEOTYPE_CHANGED, remoteTrack, prevType, this);
-                    }else{
-                        //  console.log(`TPC ep:${endpointId} ssrc=${remoteTrack.ssrc} videoType '${videoType}'.`)
-                    }
+            const remoteTrack = remoteTrackMap.get(ssrc)
+            if (remoteTrack){
+                if (remoteTrack.videoType === undefined){
+                    //  console.log(`TPC ep:${endpointId} ssrc=${remoteTrack.ssrc} videoType ''->'${videoType}'.`)
+                    remoteTrack.videoType = videoType
+                    this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_ADDED, remoteTrack, this);    //  Emit REMOTE_TRACK_ADDED after videoType assigned
+                }else if (remoteTrack.videoType !== videoType){
+                    //  console.log(`TPC ep:${endpointId} ssrc=${remoteTrack.ssrc} videoType '${remoteTrack.videoType}'->'${videoType}'.`)
+                    this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_VIDEOTYPE_CHANGING, remoteTrack, videoType, this);
+                    const prevType = remoteTrack.videoType
+                    remoteTrack.videoType = videoType
+                    this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_VIDEOTYPE_CHANGED, remoteTrack, prevType, this);
+                }else{
+                    //  console.log(`TPC ep:${endpointId} ssrc=${remoteTrack.ssrc} videoType '${videoType}'.`)
                 }
-            }
-            if (!found){
-                console.error(`TPC _peerVideoTypeChanged: A track with ssrc ${ssrc} is not found in endpoint ${endpointId}`);
+            }else {
+                console.log(`TPC _peerVideoTypeChanged: A track with ssrc ${ssrc} is not found in endpoint ${endpointId}`);
             }
         }
     }else{
-        console.warn(`remoteTrackMap for ${endpointId} is not defined`);
+        console.log(`TPC remoteTrackMap for ${endpointId} is not defined yet.`);
     }
 };
-
 
 /**
  * Handles remote track mute / unmute events.
@@ -946,7 +944,15 @@ TraceablePeerConnection.prototype._remoteTrackAdded = function(stream, track, tr
     }
 
     const muted = peerMediaInfo.muted;
-    const videoType = peerMediaInfo.videoType; // can be undefined
+    let videoType = peerMediaInfo.videoType; // can be undefined
+    if (!videoType){
+        const remoteVideoTypes = this.remoteVideoTypeMap.get(ownerEndpointId);
+        const found = remoteVideoTypes?.find(e => (e[0] === trackSsrc))
+        if (found){
+            videoType = found[1]
+            console.error('This is not an Error: videoType found from remoteVideoTypes', remoteVideoTypes);
+        } 
+    }
     this._createRemoteTrack(
         ownerEndpointId, stream, track, mediaType, videoType, trackSsrc, muted);
 };
@@ -1020,7 +1026,7 @@ TraceablePeerConnection.prototype._createRemoteTrack = function(
 
 	//	EXT_MULTI_VIDEO ------------------------------------
     //remoteTrackMap.set(mediaType, remoteTrack);
-    remoteTrackMap.set(remoteTrack.getId(), remoteTrack);
+    remoteTrackMap.set(remoteTrack.getSSRC(), remoteTrack);
     //	----------------------------------------------------
 
     if (remoteTrack.type === 'audio' ||  videoType){
@@ -1120,12 +1126,12 @@ TraceablePeerConnection.prototype._getRemoteTrackById = function(
         trackId) {
     // .find will break the loop once the first match is found
     for (const remoteTrackMap of this.remoteTrackMaps.values()) {
-        for (const mediaTrack of remoteTrackMap.values()) {
+        for (const track of remoteTrackMap.values()) {
             // FIXME verify and try to use ===
             /* eslint-disable eqeqeq */
-            if (mediaTrack.getStreamId() == streamId
-                && mediaTrack.getTrackId() == trackId) {
-                return mediaTrack;
+            if (track.getStreamId() == streamId
+                && track.getTrackId() == trackId) {
+                return track;
             }
 
             /* eslint-enable eqeqeq */
@@ -1163,6 +1169,7 @@ TraceablePeerConnection.prototype.removeRemoteTracks = function(owner) {
             }
         })
     }
+    this.remoteTrackMaps.delete(owner);
 	//	----------------------------------------------------
 
     logger.debug(
@@ -1195,7 +1202,7 @@ TraceablePeerConnection.prototype._removeRemoteTrack = function(toBeRemoved) {
     if (!remoteTrackMap) {
         logger.error(
             `removeRemoteTrack: no remote tracks map for ${participantId}`);
-    } else if (!remoteTrackMap.delete(toBeRemoved.getId())) {
+    } else if (!remoteTrackMap.delete(toBeRemoved.getSSRC())) {
         logger.error(
         `Failed to remove ${toBeRemoved} - remoteTrack mapping messed up ?`);
     }
@@ -1683,7 +1690,7 @@ TraceablePeerConnection.prototype.containsTrack = function(track) {
     const participantId = track.getParticipantId();
     const remoteTrackMap = this.remoteTrackMaps.get(participantId);
 
-    return Boolean(remoteTrackMap && remoteTrackMap.get(track.getType()) === track);
+    return Boolean(remoteTrackMap && remoteTrackMap.get(track.getSSRC()) === track);
 };
 
 /**

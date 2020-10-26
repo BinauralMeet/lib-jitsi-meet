@@ -1564,6 +1564,7 @@ export default class ChatRoom extends Listenable {
         let mutedNode = null;
 
         //  hasevr
+        //*
         const videoTypeNode = filterNodeFromPresenceJSON(pres, 'videoTypes');
         if (videoTypeNode.length > 0){
             const videoTypes = JSON.parse(videoTypeNode[0].value);
@@ -1571,9 +1572,10 @@ export default class ChatRoom extends Listenable {
             if (found) {
                 data.videoType = found[1];
             }else{
-                console.error(`VideoType for ssrc: ${ssrc} is not in videoTypes ${JSON.stringify(videoTypes)}`);
+                console.log(`VideoType for ssrc: ${ssrc} is not in videoTypes ${JSON.stringify(videoTypes)}`);
             }
         }
+        //  */
 
         if (mediaType === MediaType.AUDIO) {
             mutedNode = filterNodeFromPresenceJSON(pres, 'audiomuted');
