@@ -26,7 +26,7 @@ import {TRACK_MUTE_CHANGED} from '../../JitsiTrackEvents';
 
 // FIXME SDP tools should end up in some kind of util module
 
-const videoTypelog = console.log  //  logger for videoType communication
+const videoTypelog = console.debug  //  logger for videoType communication
 
 const logger = getLogger(__filename);
 const DEGRADATION_PREFERENCE_CAMERA = 'maintain-framerate';
@@ -210,13 +210,7 @@ export default function TraceablePeerConnection(
     this.signalingLayer.on(
         SignalingEvents.PEER_VIDEO_TYPE_CHANGED,
         this._peerVideoTypeChanged);
-    
-    //  hasevr listen request also
-    this._peerVideoTypeRequested = this._peerVideoTypeRequested.bind(this);
-    this.signalingLayer.on(
-        SignalingEvents.PEER_VIDEO_TYPE_REQUESTED,
-        this._peerVideoTypeRequested);
-    
+        
     this._peerMutedChanged = this._peerMutedChanged.bind(this);
     this.signalingLayer.on(
         SignalingEvents.PEER_MUTED_CHANGED,
@@ -608,18 +602,6 @@ TraceablePeerConnection.prototype._peerVideoTypeChanged = function(
     }
 };
 
-TraceablePeerConnection.prototype._peerVideoTypeRequested = function(
-    endpointId,             //  endpoint requesting
-    requestToJSONString,    //  array of endpointId request to
-){
-    const localId = this.chatRoom && this.chatRoom.myroomjid ?
-        Strophe.getResourceFromJid(this.chatRoom.myroomjid) : null;
-    const to = JSON.parse(requestToJSONString)
-    if (to.find(ep => ep === localId)) {
-        this.sendVideoTypes()
-    }
-}
-
 /**
  * Handles remote track mute / unmute events.
  * @param {string} endpointId the track owner's identifier (MUC nickname)
@@ -967,39 +949,9 @@ TraceablePeerConnection.prototype._remoteTrackAdded = function(stream, track, tr
     }
 
     const muted = peerMediaInfo.muted;
-    let videoType = peerMediaInfo.videoType; // can be undefined
+    const videoType = peerMediaInfo.videoType; // can be undefined
     this._createRemoteTrack(
         ownerEndpointId, stream, track, mediaType, videoType, trackSsrc, muted);
-        if (!videoType){
-        const INTERVAL = 1000;
-        if (!this.interval){
-            this.interval = setInterval(()=>{
-                videoTypelog('TPC: Interval to check for tracks without videoType.')
-                const requestTo = new Set();
-                this.remoteTrackMaps.forEach((remoteTrackMap) => {
-                    remoteTrackMap.forEach(track => {
-                        if (!track.videoType){
-                            const peerMediaInfo
-                                = this.signalingLayer.getPeerMediaInfo(track.ownerEndpointId, track.type, track.getSSRC());
-                            track.videoType = peerMediaInfo?.videoType
-                            if (!track.videoType) {
-                                requestTo.add(track.ownerEndpointId)
-                            }else{
-                            }
-                        }
-                    })
-                })
-                if (requestTo.size){
-                    this.signalingLayer.clearVideoTypeRequest();
-                    this.signalingLayer.sendVideoTypeRequest(requestTo);
-                }else {
-                    this.signalingLayer.clearVideoTypeRequest();
-                    clearInterval(this.interval);
-                    this.interval = undefined;
-                }
-            }, INTERVAL);
-        }
-    }
 };
 
 // FIXME cleanup params
@@ -1076,9 +1028,9 @@ TraceablePeerConnection.prototype._createRemoteTrack = function(
 
     if (videoType){
         this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_ADDED, remoteTrack, this);
-        //  console.log(`remoteTrack ssrc=${remoteTrack.ssrc} videoType '${videoType}' created.`, remoteTrack);
+        console.debug(`remoteTrack ssrc=${remoteTrack.ssrc} videoType '${videoType}' created.`, remoteTrack);
     }else{
-        console.warn(`remoteTrack ssrc=${remoteTrack.ssrc} craeted without videoType.`, remoteTrack);
+        console.debug(`remoteTrack ssrc=${remoteTrack.ssrc} craeted without videoType.`, remoteTrack);
     }
 
     return remoteTrack
@@ -2374,11 +2326,11 @@ TraceablePeerConnection.prototype.setRemoteDescription = function(description) {
             // capScreenshareBitrate is disabled.
             const enableConferenceFlag = !(this.options.capScreenshareBitrate && !hasCameraTrack(this));
 
-            const console_log = console.log;           // hasevr try to suppress log
-            console.log = ()=>{};                      //   but this does not work.
+            const console_info = console.info;           // hasevr suppress info
+            console.info = console.debug;                //   but this does not work.
             // eslint-disable-next-line no-param-reassign
             description = this.simulcast.mungeRemoteDescription(description, enableConferenceFlag);
-            console.log = console_log;                 //  hasevr restore log
+            console.info = console_info;                 //  hasevr restore log
             this.trace(
                 'setRemoteDescription::postTransform (simulcast)',
                 dumpSDP(description));

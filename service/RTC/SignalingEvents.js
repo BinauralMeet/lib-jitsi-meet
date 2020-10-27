@@ -12,10 +12,3 @@ export const PEER_MUTED_CHANGED = 'signaling.peerMuted';
  * @param {VideoType} videoType the new value
  */
 export const PEER_VIDEO_TYPE_CHANGED = 'signaling.peerVideoType';
-
-/**
- * Event triggered when participant's video type changes.
- * @param {string} endpointId the endpoint request
- * @param {stirng[]} to endpoints request to 
- */
-export const PEER_VIDEO_TYPE_REQUESTED = 'signaling.peerVideoTypeRequest';
