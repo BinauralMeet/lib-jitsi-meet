@@ -1572,7 +1572,7 @@ export default class ChatRoom extends Listenable {
             if (found) {
                 data.videoType = found[1];
             }else{
-                console.log(`VideoType for ssrc: ${ssrc} is not in videoTypes ${JSON.stringify(videoTypes)}`);
+                console.debug(`VideoType for ssrc: ${ssrc} is not in videoTypes ${JSON.stringify(videoTypes)}`);
             }
         }
         //  */
