@@ -81,6 +81,13 @@ export default class SignalingLayerImpl extends SignalingLayer {
             //  hasevr for multi track extenstion
             //  room.addPresenceListener('videoType', this._videoTypeHandler);
             room.addPresenceListener('videoTypes', this._videoTypeHandler);
+
+            this._videoTypeRequestHandler = (node, from) => {
+                this.eventEmitter.emit(
+                    SignalingEvents.PEER_VIDEO_TYPE_REQUESTED,
+                    from, node.value);
+            };
+            room.addPresenceListener('videoTypeRequest', this._videoTypeRequestHandler);
         }
     }
 
@@ -122,8 +129,29 @@ export default class SignalingLayerImpl extends SignalingLayer {
             this.chatRoom.addToPresence('videoTypes', {
                 value: JSON.stringify(Array.from(videoTypes.entries()))
             });
+            this.chatRoom.sendPresence()
         }else{
             logger.error('Requested to send videoTypes to peer, before room was set.');
+        }
+    }
+    /**
+     * @inheritDoc
+     */
+    sendVideoTypeRequest(requests){
+        if (this.chatRoom) {
+            this.chatRoom.addToPresence('videoTypeRequest', {
+                value: JSON.stringify(Array.from(requests))
+            });
+            this.chatRoom.sendPresence()
+        }else{
+            logger.error('Requested to send videoTypeRequest to peer, before room was set.');
+        }        
+    }
+    clearVideoTypeRequest(){
+        if (this.chatRoom) {
+            this.chatRoom.removeFromPresence('videoTypeRequest')
+        }else{
+            logger.error('Requested to clear videoTypeRequest to peer, before room was set.');
         }
     }
 }

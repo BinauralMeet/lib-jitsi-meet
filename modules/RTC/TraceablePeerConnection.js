@@ -14,7 +14,7 @@ import * as GlobalOnErrorHandler from '../util/GlobalOnErrorHandler';
 import RtxModifier from '../xmpp/RtxModifier';
 import SDP from '../xmpp/SDP';
 import SDPUtil from '../xmpp/SDPUtil';
-import SdpConsistency from '../xmpp/SdpConsistency';
+//  import SdpConsistency from '../xmpp/SdpConsistency';    //  hasevr in EXT_MULTI_VIDEO ssrc should not be modified. 
 import { SdpTransformWrap } from '../xmpp/SdpTransformUtil';
 
 import JitsiRemoteTrack from './JitsiRemoteTrack';
@@ -25,6 +25,8 @@ import { SIM_LAYER_RIDS, tpcLog, TPCUtils } from './TPCUtils';
 import {TRACK_MUTE_CHANGED} from '../../JitsiTrackEvents';
 
 // FIXME SDP tools should end up in some kind of util module
+
+const videoTypelog = console.log  //  logger for videoType communication
 
 const logger = getLogger(__filename);
 const DEGRADATION_PREFERENCE_CAMERA = 'maintain-framerate';
@@ -78,8 +80,6 @@ export default function TraceablePeerConnection(
         constraints,
         isP2P,
         options) {
-
-    this.remoteVideoTypeMap = new Map() //  hasevr  Map<endpointId, [ssrc,videoType][]>
 
     /**
      * Indicates whether or not this peer connection instance is actively
@@ -210,7 +210,13 @@ export default function TraceablePeerConnection(
     this.signalingLayer.on(
         SignalingEvents.PEER_VIDEO_TYPE_CHANGED,
         this._peerVideoTypeChanged);
-
+    
+    //  hasevr listen request also
+    this._peerVideoTypeRequested = this._peerVideoTypeRequested.bind(this);
+    this.signalingLayer.on(
+        SignalingEvents.PEER_VIDEO_TYPE_REQUESTED,
+        this._peerVideoTypeRequested);
+    
     this._peerMutedChanged = this._peerMutedChanged.bind(this);
     this.signalingLayer.on(
         SignalingEvents.PEER_MUTED_CHANGED,
@@ -269,13 +275,19 @@ export default function TraceablePeerConnection(
     this.interop = new Interop();
     const Simulcast = require('@jitsi/sdp-simulcast');
 
+    const console_log = console.log;    // hasevr suppress log message
+    console.log = console.debug         //  
+
     this.simulcast = new Simulcast(
         {
             numOfLayers: SIM_LAYER_RIDS.length,
             explodeRemoteSimulcast: false,
             usesUnifiedPlan: browser.usesUnifiedPlan()
         });
-    this.sdpConsistency = new SdpConsistency(this.toString());
+
+    console.log = console_log         // hasevr restore log
+
+    //  hasevr  this.sdpConsistency = new SdpConsistency(this.toString());
 
     /**
      * Munges local SDP provided to the Jingle Session in order to prevent from
@@ -555,20 +567,19 @@ TraceablePeerConnection.prototype._peerVideoTypeChanged = function(
     videoTypeJSONString) {
     // Check if endpointId has a value to avoid action on random track
     if (!endpointId) {
-        logger.error(`No endpointID on peerVideoTypeChanged ${this}`);
+        logger.error('TPC _peerVideoTypeChanged: No endpointID');
 
         return;
     }
 
     const remoteVideoTypes = JSON.parse(videoTypeJSONString);
-    this.remoteVideoTypeMap.set(endpointId, remoteVideoTypes)
     const remoteTrackMap = this.remoteTrackMaps.get(endpointId);
     if (remoteTrackMap){
         let str=''; 
         remoteTrackMap.forEach( (track) => {
             str = `${str}${str?', ':''}${track.getSSRC()}-${track.type}-${track.videoType}`;
         })
-        console.log(`TPC ep ${endpointId}: ${str} -> ${videoTypeJSONString}`);
+        videoTypelog(`TPC _peerVideoTypeChanged: ep ${endpointId}: ${str} -> ${videoTypeJSONString}`);
 
         for(const remoteVideoType of remoteVideoTypes){
             const ssrc = remoteVideoType[0];
@@ -576,26 +587,38 @@ TraceablePeerConnection.prototype._peerVideoTypeChanged = function(
             const remoteTrack = remoteTrackMap.get(ssrc)
             if (remoteTrack){
                 if (remoteTrack.videoType === undefined){
-                    //  console.log(`TPC ep:${endpointId} ssrc=${remoteTrack.ssrc} videoType ''->'${videoType}'.`)
+                    //  videoTypelog(`TPC ep:${endpointId} ssrc=${remoteTrack.ssrc} videoType ''->'${videoType}'.`)
                     remoteTrack.videoType = videoType
                     this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_ADDED, remoteTrack, this);    //  Emit REMOTE_TRACK_ADDED after videoType assigned
                 }else if (remoteTrack.videoType !== videoType){
-                    //  console.log(`TPC ep:${endpointId} ssrc=${remoteTrack.ssrc} videoType '${remoteTrack.videoType}'->'${videoType}'.`)
+                    //  videoTypelog(`TPC ep:${endpointId} ssrc=${remoteTrack.ssrc} videoType '${remoteTrack.videoType}'->'${videoType}'.`)
                     this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_VIDEOTYPE_CHANGING, remoteTrack, videoType, this);
                     const prevType = remoteTrack.videoType
                     remoteTrack.videoType = videoType
                     this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_VIDEOTYPE_CHANGED, remoteTrack, prevType, this);
                 }else{
-                    //  console.log(`TPC ep:${endpointId} ssrc=${remoteTrack.ssrc} videoType '${videoType}'.`)
+                    //  videoTypelog(`TPC ep:${endpointId} ssrc=${remoteTrack.ssrc} videoType '${videoType}'.`)
                 }
             }else {
-                console.log(`TPC _peerVideoTypeChanged: A track with ssrc ${ssrc} is not found in endpoint ${endpointId}`);
+                videoTypelog(`TPC _peerVideoTypeChanged: A track with ssrc ${ssrc} is not found in endpoint ${endpointId}`);
             }
         }
     }else{
-        console.log(`TPC remoteTrackMap for ${endpointId} is not defined yet.`);
+        videoTypelog(`TPC _peerVideoTypeChanged: remoteTrackMap for ${endpointId} is not defined yet.`);
     }
 };
+
+TraceablePeerConnection.prototype._peerVideoTypeRequested = function(
+    endpointId,             //  endpoint requesting
+    requestToJSONString,    //  array of endpointId request to
+){
+    const localId = this.chatRoom && this.chatRoom.myroomjid ?
+        Strophe.getResourceFromJid(this.chatRoom.myroomjid) : null;
+    const to = JSON.parse(requestToJSONString)
+    if (to.find(ep => ep === localId)) {
+        this.sendVideoTypes()
+    }
+}
 
 /**
  * Handles remote track mute / unmute events.
@@ -945,16 +968,38 @@ TraceablePeerConnection.prototype._remoteTrackAdded = function(stream, track, tr
 
     const muted = peerMediaInfo.muted;
     let videoType = peerMediaInfo.videoType; // can be undefined
-    if (!videoType){
-        const remoteVideoTypes = this.remoteVideoTypeMap.get(ownerEndpointId);
-        const found = remoteVideoTypes?.find(e => (e[0] === trackSsrc))
-        if (found){
-            videoType = found[1]
-            console.error('This is not an Error: videoType found from remoteVideoTypes', remoteVideoTypes);
-        } 
-    }
     this._createRemoteTrack(
         ownerEndpointId, stream, track, mediaType, videoType, trackSsrc, muted);
+        if (!videoType){
+        const INTERVAL = 1000;
+        if (!this.interval){
+            this.interval = setInterval(()=>{
+                videoTypelog('TPC: Interval to check for tracks without videoType.')
+                const requestTo = new Set();
+                this.remoteTrackMaps.forEach((remoteTrackMap) => {
+                    remoteTrackMap.forEach(track => {
+                        if (!track.videoType){
+                            const peerMediaInfo
+                                = this.signalingLayer.getPeerMediaInfo(track.ownerEndpointId, track.type, track.getSSRC());
+                            track.videoType = peerMediaInfo?.videoType
+                            if (!track.videoType) {
+                                requestTo.add(track.ownerEndpointId)
+                            }else{
+                            }
+                        }
+                    })
+                })
+                if (requestTo.size){
+                    this.signalingLayer.clearVideoTypeRequest();
+                    this.signalingLayer.sendVideoTypeRequest(requestTo);
+                }else {
+                    this.signalingLayer.clearVideoTypeRequest();
+                    clearInterval(this.interval);
+                    this.interval = undefined;
+                }
+            }, INTERVAL);
+        }
+    }
 };
 
 // FIXME cleanup params
@@ -1029,12 +1074,14 @@ TraceablePeerConnection.prototype._createRemoteTrack = function(
     remoteTrackMap.set(remoteTrack.getSSRC(), remoteTrack);
     //	----------------------------------------------------
 
-    if (remoteTrack.type === 'audio' ||  videoType){
+    if (videoType){
         this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_ADDED, remoteTrack, this);
         //  console.log(`remoteTrack ssrc=${remoteTrack.ssrc} videoType '${videoType}' created.`, remoteTrack);
     }else{
         console.warn(`remoteTrack ssrc=${remoteTrack.ssrc} craeted without videoType.`, remoteTrack);
     }
+
+    return remoteTrack
 };
 
 /* eslint-enable max-params */
@@ -1736,7 +1783,7 @@ TraceablePeerConnection.prototype.addTrack = function(track, isInitiator = false
             && track.isVideoTrack() && track.isMuted()) {
         const ssrcInfo = this.generateNewStreamSSRCInfo(track);
 
-        this.sdpConsistency.setPrimarySsrc(ssrcInfo.ssrcs[0]);
+        //  hasevr  this.sdpConsistency.setPrimarySsrc(ssrcInfo.ssrcs[0]);
         const simGroup
             = ssrcInfo.groups.find(groupInfo => groupInfo.semantics === 'SIM');
 
@@ -2327,11 +2374,14 @@ TraceablePeerConnection.prototype.setRemoteDescription = function(description) {
             // capScreenshareBitrate is disabled.
             const enableConferenceFlag = !(this.options.capScreenshareBitrate && !hasCameraTrack(this));
 
-        // eslint-disable-next-line no-param-reassign
+            const console_log = console.log;           // hasevr try to suppress log
+            console.log = ()=>{};                      //   but this does not work.
+            // eslint-disable-next-line no-param-reassign
             description = this.simulcast.mungeRemoteDescription(description, enableConferenceFlag);
-        this.trace(
-            'setRemoteDescription::postTransform (simulcast)',
-            dumpSDP(description));
+            console.log = console_log;                 //  hasevr restore log
+            this.trace(
+                'setRemoteDescription::postTransform (simulcast)',
+                dumpSDP(description));
         }
 
             // eslint-disable-next-line no-param-reassign
@@ -2574,7 +2624,7 @@ TraceablePeerConnection.prototype.generateRecvonlySsrc = function() {
     const newSSRC = SDPUtil.generateSsrc();
 
     logger.info(`${this} generated new recvonly SSRC: ${newSSRC}`);
-    this.sdpConsistency.setPrimarySsrc(newSSRC);
+    //  hasevr  this.sdpConsistency.setPrimarySsrc(newSSRC);
 };
 
 /**
@@ -2583,7 +2633,7 @@ TraceablePeerConnection.prototype.generateRecvonlySsrc = function() {
  */
 TraceablePeerConnection.prototype.clearRecvonlySsrc = function() {
     logger.info('Clearing primary video SSRC!');
-    this.sdpConsistency.clearVideoSsrcCache();
+    //  hasevr  this.sdpConsistency.clearVideoSsrcCache();
 };
 
 /**
@@ -2659,16 +2709,17 @@ TraceablePeerConnection.prototype._createOfferOrAnswer = function(
                 // If there are no local video tracks, then a "recvonly"
                 // SSRC needs to be generated
                 if (!this.hasAnyTracksOfType(MediaType.VIDEO)
-                    && !this.sdpConsistency.hasPrimarySsrcCached()) {
+                    /* hasevr  && !this.sdpConsistency.hasPrimarySsrcCached()*/) {
                     this.generateRecvonlySsrc();
                 }
 
                 // eslint-disable-next-line no-param-reassign
+                /*  hasevr
                 resultSdp = new RTCSessionDescription({
                     type: resultSdp.type,
                     sdp: this.sdpConsistency.makeVideoPrimarySsrcsConsistent(
                         resultSdp.sdp)
-                });
+                }); */
 
                 this.trace(
                     `create${logName}OnSuccess::postTransform `
@@ -2682,8 +2733,13 @@ TraceablePeerConnection.prototype._createOfferOrAnswer = function(
             if (this.isSimulcastOn() && browser.usesSdpMungingForSimulcast()
                 && (!this.options.capScreenshareBitrate
                 || (this.options.capScreenshareBitrate && hasCameraTrack(this)))) {
+                
+                const console_log = console.log; // hasevr suppress console.log
+                console.log = console.debug;     //
                 // eslint-disable-next-line no-param-reassign
                 resultSdp = this.simulcast.mungeLocalDescription(resultSdp);
+                console.log = console_log;       // hasevr restore console.log
+                
                 this.trace(
                     `create${logName}`
                         + 'OnSuccess::postTransform (simulcast)',
@@ -2941,13 +2997,14 @@ TraceablePeerConnection.prototype.sendVideoTypes = function() {
         if (ssrc && track.videoType){
             localVideoTypes.set(ssrc, track.videoType)
         }
-    } this.signalingLayer.sendVideoTypes(localVideoTypes)
-    console.log(`TPC sendVideoTypes`, localVideoTypes)
+    } 
+    this.signalingLayer.sendVideoTypes(localVideoTypes)
+    videoTypelog(`TPC sendVideoTypes`, localVideoTypes)
     let str=''; 
     this.localTracks.forEach( (track, rtcId) => {
         const info = this.localSSRCs.get(rtcId);
         const ssrc = info && info.ssrcs.length ? info.ssrcs[0] : 'x';
         str = `${str}${str?', ':''}${track.type}-${track.videoType} ${ssrc}`;
     })
-    console.log(`TPC locals:`, str);
+    videoTypelog(`TPC locals:`, str);
 }
