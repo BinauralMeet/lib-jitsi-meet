@@ -234,9 +234,9 @@ export default function TraceablePeerConnection(
     this.peerconnection
         = new RTCUtils.RTCPeerConnectionType(iceConfig, safeConstraints);
     //  hasevr for debug
-    if (window.d){
-        window.d.tpc = this
-        window.d.pc = this.peerconnection
+    if (d){
+        d.tpc = this
+        d.pc = this.peerconnection
     }
 
     //this.tpcUtils = new TPCUtils(this);
