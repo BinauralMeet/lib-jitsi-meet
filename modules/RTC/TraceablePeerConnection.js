@@ -911,8 +911,12 @@ TraceablePeerConnection.prototype._remoteTrackAdded = function(stream, track, tr
 
     // FIXME the length of ssrcLines[0] not verified, but it will fail
     // with global error handler anyway
-    const ssrcStr = ssrcLines[0].substring(7).split(' ')[0];
-    const trackSsrc = Number(ssrcStr);
+
+    //  hasevr  extract all ssrcs
+    //  const ssrcStr = ssrcLines[0].substring(7).split(' ')[0];
+    //  const trackSsrc = Number(ssrcStr);
+    const ssrcs = ssrcLines.map((ssrcLine) => Number(ssrcLine.substring(7).split(' ')[0]))
+    const trackSsrc = ssrcs[0]
     const ownerEndpointId = this.signalingLayer.getSSRCOwner(trackSsrc);
 
     if (isNaN(trackSsrc) || trackSsrc < 0) {
@@ -951,7 +955,7 @@ TraceablePeerConnection.prototype._remoteTrackAdded = function(stream, track, tr
     const muted = peerMediaInfo.muted;
     const videoType = peerMediaInfo.videoType; // can be undefined
     this._createRemoteTrack(
-        ownerEndpointId, stream, track, mediaType, videoType, trackSsrc, muted);
+        ownerEndpointId, stream, track, mediaType, videoType, ssrcs, muted);
 };
 
 // FIXME cleanup params
@@ -966,7 +970,7 @@ TraceablePeerConnection.prototype._remoteTrackAdded = function(stream, track, tr
  * @param {MediaStreamTrack} track the WebRTC track instance
  * @param {MediaType} mediaType the track's type of the media
  * @param {VideoType} [videoType] the track's type of the video (if applicable)
- * @param {number} ssrc the track's main SSRC number
+ * @param {number} ssrcs the track's all SSRC numbers
  * @param {boolean} muted the initial muted status
  */
 TraceablePeerConnection.prototype._createRemoteTrack = function(
@@ -975,7 +979,7 @@ TraceablePeerConnection.prototype._createRemoteTrack = function(
         track,
         mediaType,
         videoType,
-        ssrc,
+        ssrcs,
         muted) {
     let remoteTrackMap = this.remoteTrackMaps.get(ownerEndpointId);
 
@@ -1016,7 +1020,7 @@ TraceablePeerConnection.prototype._createRemoteTrack = function(
                 track,
                 mediaType,
                 videoType,
-                ssrc,
+                ssrcs,
                 muted,
                 this.isP2P);
 
