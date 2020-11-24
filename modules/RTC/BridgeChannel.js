@@ -350,6 +350,10 @@ export default class BridgeChannel {
                 }
                 break;
             }
+            case 'ServerHello': {
+                logger.info(`Received ServerHello, version=${obj.version}.`);
+                break;
+            }
             default: {
                 logger.debug('Channel JSON-formatted message: ', obj);
 
