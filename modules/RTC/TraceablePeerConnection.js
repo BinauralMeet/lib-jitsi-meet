@@ -2716,7 +2716,8 @@ TraceablePeerConnection.prototype._createOfferOrAnswer = function(
             }
 
             const ssrcMap = extractSSRCMap(resultSdp);
-            //	console.log('extractSSRCMap: ', dumpSDP(resultSdp), ssrcMap)
+            //  hasevr  Dump SDP. This is good to see offer and answer.
+            //  console.log('extractSSRCMap: ', dumpSDP(resultSdp), ssrcMap)
 
             logger.debug('Got local SSRCs MAP: ', ssrcMap);
             this._processLocalSSRCsMap(ssrcMap);
