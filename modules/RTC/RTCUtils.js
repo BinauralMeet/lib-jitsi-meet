@@ -284,7 +284,8 @@ function getConstraints(um, options = {}) {
                 { googHighpassFilter: !disableHPF && !disableAP },
                 { googNoiseSuppression2: !disableNS && !disableAP },
                 { googEchoCancellation2: !disableAEC && !disableAP },
-                { googAutoGainControl2: !disableAGC && !disableAP }
+                { googAutoGainControl2: !disableAGC && !disableAP },
+                { echoCancellationType: 'system' },
             );
         }
     }
@@ -458,7 +459,8 @@ function newGetConstraints(um = [], options = {}) {
                 { googHighpassFilter: !disableHPF && !disableAP },
                 { googNoiseSuppression2: !disableNS && !disableAP },
                 { googEchoCancellation2: !disableAEC && !disableAP },
-                { googAutoGainControl2: !disableAGC && !disableAP }
+                { googAutoGainControl2: !disableAGC && !disableAP },
+                { echoCancellationType: 'system' },
             );
         }
     } else {
