@@ -27,6 +27,7 @@ import {TRACK_MUTE_CHANGED} from '../../JitsiTrackEvents';
 // FIXME SDP tools should end up in some kind of util module
 
 const videoTypelog = console.debug  //  logger for videoType communication
+const ssrcLog = console.debug       //  logger for ssrcs
 
 const logger = getLogger(__filename);
 const DEGRADATION_PREFERENCE_CAMERA = 'maintain-framerate';
@@ -938,7 +939,10 @@ TraceablePeerConnection.prototype._remoteTrackAdded = function(stream, track, tr
         return;
     }
 
-    logger.log(`${this} associated ssrc`, ownerEndpointId, trackSsrc);
+    //  logger.log(`${this} associated ssrc`, ownerEndpointId, trackSsrc);
+    
+    ssrcLog(`TPC createRemoteTrack for ${ownerEndpointId} SSRC:${ssrcs}`);
+
 
     const peerMediaInfo
         = this.signalingLayer.getPeerMediaInfo(ownerEndpointId, mediaType, trackSsrc);
@@ -2648,6 +2652,7 @@ function hasCameraTrack(peerConnection) {
         .some(t => t.videoType === VideoType.CAMERA);
 }
 
+let lastSSRCJson = undefined;
 TraceablePeerConnection.prototype._createOfferOrAnswer = function(
         isOffer,
         constraints) {
@@ -2661,27 +2666,28 @@ TraceablePeerConnection.prototype._createOfferOrAnswer = function(
             this.trace(
                 `create${logName}OnSuccess::preTransform`, dumpSDP(resultSdp));
 
+            /*  hasevr  sdpConsistency is no used and generateRecvonlySsrc() do nothing
             if (browser.usesPlanB()) {
+
                 // If there are no local video tracks, then a "recvonly"
                 // SSRC needs to be generated
+
                 if (!this.hasAnyTracksOfType(MediaType.VIDEO)
-                    /* hasevr  && !this.sdpConsistency.hasPrimarySsrcCached()*/) {
+                    && !this.sdpConsistency.hasPrimarySsrcCached()) {
                     this.generateRecvonlySsrc();
                 }
-
-                // eslint-disable-next-line no-param-reassign
-                /*  hasevr
                 resultSdp = new RTCSessionDescription({
                     type: resultSdp.type,
                     sdp: this.sdpConsistency.makeVideoPrimarySsrcsConsistent(
                         resultSdp.sdp)
-                }); */
-
+                }); 
+                
                 this.trace(
                     `create${logName}OnSuccess::postTransform `
                          + '(make primary audio/video ssrcs consistent)',
                     dumpSDP(resultSdp));
             }
+            */
 
             // configure simulcast for camera tracks always and for
             // desktop tracks only when the testing flag for maxbitrates
@@ -2718,6 +2724,17 @@ TraceablePeerConnection.prototype._createOfferOrAnswer = function(
             const ssrcMap = extractSSRCMap(resultSdp);
             //  hasevr  Dump SDP. This is good to see offer and answer.
             //  console.log('extractSSRCMap: ', dumpSDP(resultSdp), ssrcMap)
+            const ssrcs = Array.from(ssrcMap.values()).map(group => group.ssrcs)
+            const ssrcsStrs = ssrcs.map(ssrc => `[${ssrc}]`)
+            const ssrcJson = JSON.stringify(ssrcs)
+            if (!lastSSRCJson){
+                ssrcLog(`OA success SSRC: ${ssrcsStrs}`)
+            }else{
+                if (ssrcJson !== lastSSRCJson){
+                    ssrcLog(`OA success SSRC changed: ${ssrcsStrs}`)                    
+                }
+            }
+            lastSSRCJson = ssrcJson
 
             logger.debug('Got local SSRCs MAP: ', ssrcMap);
             this._processLocalSSRCsMap(ssrcMap);
