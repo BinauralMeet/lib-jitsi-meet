@@ -18,7 +18,7 @@ import SDPUtil from '../xmpp/SDPUtil';
 import { SdpTransformWrap } from '../xmpp/SdpTransformUtil';
 
 import JitsiRemoteTrack from './JitsiRemoteTrack';
-import LocalSdpMunger from './LocalSdpMunger';
+//  hasevr  import LocalSdpMunger from './LocalSdpMunger';
 import RTC from './RTC';
 import RTCUtils from './RTCUtils';
 import { SIM_LAYER_RIDS, tpcLog, TPCUtils } from './TPCUtils';
@@ -289,7 +289,7 @@ export default function TraceablePeerConnection(
      * sending SSRC updates on attach/detach and mute/unmute (for video).
      * @type {LocalSdpMunger}
      */
-    this.localSdpMunger = new LocalSdpMunger(this);
+    //  hasevr  this.localSdpMunger = new LocalSdpMunger(this);
 
     /**
      * TracablePeerConnection uses RTC's eventEmitter
@@ -1589,11 +1589,13 @@ const getters = {
             this.trace('getLocalDescription::postTransform (inject ssrc group)',
                 dumpSDP(desc));
         } else {
+            /*  hasevr
             if (browser.doesVideoMuteByStreamRemove()) {
                 desc = this.localSdpMunger.maybeAddMutedLocalVideoTracksToSDP(desc);
                 logger.debug(
                     'getLocalDescription::postTransform (munge local SDP)', desc);
             }
+            */
 
             // What comes out of this getter will be signalled over Jingle to
             // the other peer, so we need to make sure the media direction is
@@ -1607,7 +1609,7 @@ const getters = {
         }
 
         // See the method's doc for more info about this transformation.
-        desc = this.localSdpMunger.transformStreamIdentifiers(desc);
+        //  hasevr  desc = this.localSdpMunger.transformStreamIdentifiers(desc);
 
         return desc;
     },
