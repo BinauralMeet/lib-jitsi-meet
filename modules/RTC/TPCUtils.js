@@ -1,6 +1,7 @@
 import { getLogger } from 'jitsi-meet-logger';
 import transform from 'sdp-transform';
 
+import VideoType from '../../service/RTC/VideoType';
 import browser from '../browser';
 
 const logger = getLogger(__filename);
@@ -136,7 +137,7 @@ export class TPCUtils {
         const idx = sdp.media.findIndex(mline => mline.type === 'video');
 
         if (sdp.media[idx].rids && (sdp.media[idx].simulcast_03 || sdp.media[idx].simulcast)) {
-            // Make sure we don't have the simulcast recv line on video descriptions other than the
+            // Make sure we don't have the simulcast recv line on video descriptions other than
             // the first video description.
             sdp.media.forEach((mline, i) => {
                 if (mline.type === 'video' && i !== idx) {
@@ -196,7 +197,6 @@ export class TPCUtils {
     * @returns {void}
     */
     addTrack(localTrack, isInitiator) {
-        const mstrack = localTrack.getTrack();
 
         if (isInitiator) {
             // Use pc.addTransceiver() for the initiator case when local tracks are getting added
@@ -210,12 +210,10 @@ export class TPCUtils {
             if (!browser.isFirefox()) {
                 transceiverInit.sendEncodings = this._getStreamEncodings(localTrack);
             }
-            this.pc.peerconnection.addTransceiver(mstrack, transceiverInit);
         } else {
             // Use pc.addTrack() for responder case so that we can re-use the m-lines that were created
             // when setRemoteDescription was called. pc.addTrack() automatically  attaches to any existing
             // unused "recv-only" transceiver.
-            this.pc.peerconnection.addTrack(mstrack);
         }
     }
 
@@ -226,7 +224,6 @@ export class TPCUtils {
      */
     addTrackUnmute(localTrack) {
         const mediaType = localTrack.getType();
-        const mstrack = localTrack.getTrack();
 
         // The assumption here is that the first transceiver of the specified
         // media type is that of the local track.
@@ -243,10 +240,6 @@ export class TPCUtils {
         if (transceiver.direction === 'recvonly') {
             const stream = localTrack.getOriginalStream();
 
-            if (stream){
-                //this.pc.peerconnection.addStream(localTrack.getOriginalStream());
-                this.pc.peerconnection.addTrack(mstrack, localTrack.getOriginalStream())
-                tpcLog(`TPCUtils TRACK_ADD ${localTrack} ${localTrack.getUsageLabel()} tid:${localTrack.getTrackId()}`)
 
                 return this.setEncodings(localTrack).then(() => {
                     this.pc.localTracks.set(localTrack.rtcId, localTrack);
@@ -275,7 +268,9 @@ export class TPCUtils {
     }
 
         const localVideoHeightConstraints = [];
-        const height = localTrack.getSettings().height;
+
+        // Firefox doesn't return the height of the desktop track, assume a min. height of 720.
+        const { height = 720 } = localTrack.getSettings();
 
         for (const encoding of this.localStreamEncodingsConfig) {
             localVideoHeightConstraints.push(height / encoding.scaleResolutionDownBy);
@@ -435,5 +430,31 @@ export class TPCUtils {
     */
     setVideoTransferActive(active) {
         this.setMediaTransferActive(MediaType.VIDEO, active);
+    }
+
+    /**
+     * Ensures that the resolution of the stream encodings are consistent with the values
+     * that were configured on the RTCRtpSender when the source was added to the peerconnection.
+     * This should prevent us from overriding the default values if the browser returns
+     * erroneous values when RTCRtpSender.getParameters is used for getting the encodings info.
+     * @param {Object} parameters - the RTCRtpEncodingParameters obtained from the browser.
+     * @returns {void}
+     */
+    updateEncodingsResolution(parameters) {
+        const localVideoTrack = this.pc.getLocalVideoTrack();
+
+        // Ignore desktop and non-simulcast tracks.
+        if (!(parameters
+            && parameters.encodings
+            && Array.isArray(parameters.encodings)
+            && this.pc.isSimulcastOn()
+            && localVideoTrack
+            && localVideoTrack.videoType !== VideoType.DESKTOP)) {
+            return;
+        }
+
+        parameters.encodings.forEach((encoding, idx) => {
+            encoding.scaleResolutionDownBy = this.localStreamEncodingsConfig[idx].scaleResolutionDownBy;
+        });
     }
 }

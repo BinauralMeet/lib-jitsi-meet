@@ -139,6 +139,7 @@ JitsiMeetJS.setLogLevel(JitsiMeetJS.logLevels.ERROR);
         - `NO_AUDIO_INPUT` - notifies that the current selected input device has no signal.
         - `AUDIO_INPUT_STATE_CHANGE` - notifies that the current conference audio input switched between audio input states i.e. with or without audio input.
         - `NOISY_MIC` - notifies that the current microphone used by the conference is noisy.
+        - `PARTICIPANT_PROPERTY_CHANGED` - notifies that user has changed his custom participant property. (parameters - user(JitsiParticipant), propertyKey(string), oldPropertyValue(string), propertyValue(string))
 
     2. `connection`
         - `CONNECTION_FAILED` - indicates that the server connection failed.
@@ -226,6 +227,10 @@ This objects represents the server connection. You can create new `JitsiConnecti
             - `anonymousdomain`
         4. `enableLipSync` - (optional) boolean property which enables the lipsync feature. Currently works only in Chrome and is disabled by default.
         5. `clientNode` - The name of client node advertised in XEP-0115 'c' stanza
+        6. xmppPing - (optional) JS Object - xmpp ping options
+            - `interval` - how often to send ping requests, default: 10000 (10 seconds)
+            - `timeout` - the time to wait for ping responses, default: 5000 (5 seconds)
+            - `threshold` - how many ping failures will be tolerated before the connection is killed, default: 2
 
 2. `connect(options)` - establish server connection
     - `options` - JS Object with `id` and `password` properties.
@@ -449,6 +454,10 @@ Throws NetworkError or InvalidStateError or Error if the operation fails.
 35. `setSenderVideoConstraint(resolution)` - set the desired resolution to send to JVB or the peer (180, 360, 720).
 
 36. `isHidden` - checks if local user has joined as a "hidden" user. This is a specialized role used for integrations.
+
+37. `setLocalParticipantProperty(propertyKey, propertyValue)` - used to set a custom propery to the local participant("fullName": "Full Name", favoriteColor: "red", "userId": 234). Also this can be used to modify an already set custom property.
+    - `propertyKey` - string - custom property name
+    - `propertyValue` - string - custom property value
 
 JitsiTrack
 ======

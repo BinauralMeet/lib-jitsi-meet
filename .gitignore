@@ -12,4 +12,5 @@ npm-*.log
 .jshintrc
 .DS_Store
 stats.json
+.vscode
 /yarn.lock

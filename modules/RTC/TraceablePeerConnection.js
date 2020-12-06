@@ -22,7 +22,6 @@ import JitsiRemoteTrack from './JitsiRemoteTrack';
 import RTC from './RTC';
 import RTCUtils from './RTCUtils';
 import { SIM_LAYER_RIDS, tpcLog, TPCUtils } from './TPCUtils';
-import {TRACK_MUTE_CHANGED} from '../../JitsiTrackEvents';
 
 // FIXME SDP tools should end up in some kind of util module
 
@@ -239,8 +238,6 @@ export default function TraceablePeerConnection(
         d.tpc = this
         d.pc = this.peerconnection
     }
-
-    //this.tpcUtils = new TPCUtils(this);
 
     // The standard video bitrates are used in Unified plan when switching
     // between camera/desktop tracks on the same sender.
@@ -622,7 +619,7 @@ TraceablePeerConnection.prototype._peerMutedChanged = function(
     }
     const tracks = this.getRemoteTracks(endpointId, mediaType);
 
-    //	EXT_MULTI_VIDEO  desktop streams can not be muted. The camera stream can be muted.
+    //	hasevr EXT_MULTI_VIDEO  desktop streams can not be muted. The camera stream can be muted.
 	for(const track of tracks){
         if (track.isAudioTrack() || track.videoType === VideoType.CAMERA){
             track.setMute(isMuted)
@@ -1029,16 +1026,17 @@ TraceablePeerConnection.prototype._createRemoteTrack = function(
                 this.isP2P);
 
 
-	//	EXT_MULTI_VIDEO ------------------------------------
+	//	hasevr EXT_MULTI_VIDEO ------------------------------------
     //remoteTrackMap.set(mediaType, remoteTrack);
     remoteTrackMap.set(remoteTrack.getSSRC(), remoteTrack);
     //	----------------------------------------------------
-
+	
+	//	hasevr EXT_VIDEOTYPE
     if (videoType){
         this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_ADDED, remoteTrack, this);
         console.debug(`remoteTrack ssrc=${remoteTrack.ssrc} videoType '${videoType}' created.`, remoteTrack);
     }else{
-        console.debug(`remoteTrack ssrc=${remoteTrack.ssrc} craeted without videoType.`, remoteTrack);
+        console.warn(`remoteTrack ssrc=${remoteTrack.ssrc} craeted without videoType. emit REMOTE_TRACK_ADDED later`, remoteTrack);
     }
 
     return remoteTrack
@@ -1160,14 +1158,12 @@ TraceablePeerConnection.prototype.removeRemoteTracks = function(owner) {
     const remoteTrackMap = this.remoteTrackMaps.get(owner);
 
 	//	EXT_MULTI_VIDEO -----------------------------------------
-/*    if (remoteTrackMap) {
-        const removedAudioTrack = remoteTrackMap.get(MediaType.AUDIO);
-        const removedVideoTrack = remoteTrackMap.get(MediaType.VIDEO);
-
+/*    if (remoteTracksMap) {
+        const removedAudioTrack = remoteTracksMap.get(MediaType.AUDIO);
+        const removedVideoTrack = remoteTracksMap.get(MediaType.VIDEO);
         removedAudioTrack && removedTracks.push(removedAudioTrack);
         removedVideoTrack && removedTracks.push(removedVideoTrack);
 
-        this.remoteTrackMaps.delete(owner);
     }*/
     if (remoteTrackMap) {
         remoteTrackMap.forEach((track) => {
@@ -1201,7 +1197,6 @@ TraceablePeerConnection.prototype._removeRemoteTrack = function(toBeRemoved) {
     if (!remoteTrackMap) {
         logger.error(
             `removeRemoteTrack: no remote tracks map for ${participantId}`);
-    } else if (!remoteTrackMap.delete(toBeRemoved.getType())) {
         logger.error(
             `Failed to remove ${toBeRemoved} - type mapping messed up ?`);
     }
@@ -1823,10 +1818,6 @@ TraceablePeerConnection.prototype.addTrackUnmute = function(track) {
  * @private
  */
 TraceablePeerConnection.prototype._addStream = function(mediaStream) {
-    //this.peerconnection.addStream(mediaStream);
-    const mstrack = mediaStream.getTracks()[0]
-    this.peerconnection.addTrack(mstrack, mediaStream)
-    tpcLog(`TPC add track tid:${mstrack.id} msid:${mediaStream.id}`)
     this._addedStreams.push(mediaStream);
 };
 
@@ -1901,7 +1892,6 @@ TraceablePeerConnection.prototype.removeTrack = function(localTrack) {
         // Abort - nothing to be done here
         return;
     }
-
     this.localTracks.delete(localTrack.rtcId);
     this.localSSRCs.delete(localTrack.rtcId);
 
@@ -2222,6 +2212,8 @@ TraceablePeerConnection.prototype.setSenderVideoDegradationPreference = function
             parameters.encodings[encoding].degradationPreference = preference;
         }
     }
+    this.tpcUtils.updateEncodingsResolution(parameters);
+
     return videoSender.setParameters(parameters);
 };
 
@@ -2317,6 +2309,7 @@ TraceablePeerConnection.prototype.setMaxBitRate = function() {
         }
         parameters.encodings[0].maxBitrate = bitrate;
     }
+    this.tpcUtils.updateEncodingsResolution(parameters);
 
     return videoSender.setParameters(parameters);
 };
@@ -2331,15 +2324,10 @@ TraceablePeerConnection.prototype.setRemoteDescription = function(description) {
     if (browser.usesPlanB()) {
         // TODO the focus should squeze or explode the remote simulcast
         if (this.isSimulcastOn()) {
-            // Determine if "x-google-conference" needs to be added to the remote description.
-            // We need to add that flag for camera tracks always and for desktop tracks only when
-            // capScreenshareBitrate is disabled.
-            const enableConferenceFlag = !(this.options.capScreenshareBitrate && !hasCameraTrack(this));
-
             const console_info = console.info;           // hasevr suppress info
             console.info = console.debug;                //   but this does not work.
             // eslint-disable-next-line no-param-reassign
-            description = this.simulcast.mungeRemoteDescription(description, enableConferenceFlag);
+            description = this.simulcast.mungeRemoteDescription(description, true /* add x-google-conference flag */);
             console.info = console_info;                 //  hasevr restore log
             this.trace(
                 'setRemoteDescription::postTransform (simulcast)',
@@ -2420,11 +2408,17 @@ TraceablePeerConnection.prototype.setSenderVideoConstraint = function(frameHeigh
 
     this.senderVideoMaxHeight = newHeight;
 
+    // If layer suspension is disabled and sender constraint is not configured for the conference,
+    // resolve here so that the encodings stay enabled. This can happen in custom apps built using
+    // lib-jitsi-meet.
+    if (newHeight === null) {
+        return Promise.resolve();
+    }
+
     logger.log(`${this} senderVideoMaxHeight: ${newHeight}`);
 
     const localVideoTrack = this.getLocalVideoTrack();
 
-    if (!localVideoTrack || localVideoTrack.isMuted() || localVideoTrack.videoType !== VideoType.CAMERA) {
         return Promise.resolve();
     }
                 const videoSender = this.findSenderByKind(MediaType.VIDEO);
@@ -2458,10 +2452,15 @@ TraceablePeerConnection.prototype.setSenderVideoConstraint = function(frameHeigh
                         parameters.encodings[encoding].active = encodingsEnabledState[encoding];
                     }
                 }
+        this.tpcUtils.updateEncodingsResolution(parameters);
     } else if (newHeight > 0) {
-        parameters.encodings[0].scaleResolutionDownBy = localVideoTrack.resolution >= newHeight
-            ? Math.floor(localVideoTrack.resolution / newHeight)
-            : 1;
+        // Do not scale down the desktop tracks until QualityController is able to propagate the sender constraints
+        // only on the active media connection. Right now, the sender constraints received on the bridge channel
+        // are propagated on both the jvb and p2p connections in cases where they both are active at the same time.
+        parameters.encodings[0].scaleResolutionDownBy
+            = localVideoTrack.videoType === VideoType.DESKTOP || localVideoTrack.resolution <= newHeight
+                ? 1
+                : Math.floor(localVideoTrack.resolution / newHeight);
         parameters.encodings[0].active = true;
     } else {
         parameters.encodings[0].scaleResolutionDownBy = undefined;
@@ -2651,7 +2650,6 @@ TraceablePeerConnection.prototype.createOffer = function(constraints) {
  */
 function hasCameraTrack(peerConnection) {
     return peerConnection.getLocalTracks()
-        .some(t => t.videoType === VideoType.CAMERA);
 }
 
 let lastSSRCJson = undefined;
@@ -2682,8 +2680,6 @@ TraceablePeerConnection.prototype._createOfferOrAnswer = function(
                     type: resultSdp.type,
                     sdp: this.sdpConsistency.makeVideoPrimarySsrcsConsistent(
                         resultSdp.sdp)
-                }); 
-                
                 this.trace(
                     `create${logName}OnSuccess::postTransform `
                          + '(make primary audio/video ssrcs consistent)',
