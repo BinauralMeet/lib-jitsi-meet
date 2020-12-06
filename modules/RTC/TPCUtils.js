@@ -1,6 +1,8 @@
 import { getLogger } from 'jitsi-meet-logger';
 import transform from 'sdp-transform';
 
+import * as MediaType from '../../service/RTC/MediaType';
+import RTCEvents from '../../service/RTC/RTCEvents';
 import VideoType from '../../service/RTC/VideoType';
 import browser from '../browser';
 
@@ -197,6 +199,7 @@ export class TPCUtils {
     * @returns {void}
     */
     addTrack(localTrack, isInitiator) {
+        const track = localTrack.getTrack();
 
         if (isInitiator) {
             // Use pc.addTransceiver() for the initiator case when local tracks are getting added
@@ -210,10 +213,12 @@ export class TPCUtils {
             if (!browser.isFirefox()) {
                 transceiverInit.sendEncodings = this._getStreamEncodings(localTrack);
             }
+            this.pc.peerconnection.addTransceiver(track, transceiverInit);
         } else {
             // Use pc.addTrack() for responder case so that we can re-use the m-lines that were created
             // when setRemoteDescription was called. pc.addTrack() automatically  attaches to any existing
             // unused "recv-only" transceiver.
+            this.pc.peerconnection.addTrack(track);
         }
     }
 
@@ -224,6 +229,7 @@ export class TPCUtils {
      */
     addTrackUnmute(localTrack) {
         const mediaType = localTrack.getType();
+        const track = localTrack.getTrack();
 
         // The assumption here is that the first transceiver of the specified
         // media type is that of the local track.
@@ -240,6 +246,8 @@ export class TPCUtils {
         if (transceiver.direction === 'recvonly') {
             const stream = localTrack.getOriginalStream();
 
+            if (stream) {
+                this.pc.peerconnection.addStream(localTrack.getOriginalStream());
 
                 return this.setEncodings(localTrack).then(() => {
                     this.pc.localTracks.set(localTrack.rtcId, localTrack);

@@ -1,6 +1,7 @@
 /* global __filename, $, Promise */
 
 import EventEmitter from 'events';
+import { getLogger } from 'jitsi-meet-logger';
 import isEqual from 'lodash.isequal';
 import { Strophe } from 'strophe.js';
 
@@ -59,8 +60,8 @@ import {
     createP2PEvent
 } from './service/statistics/AnalyticsEvents';
 import * as XMPPEvents from './service/xmpp/XMPPEvents';
-import Logger from 'jitsi-meet-logger';
-const logger = Logger.getLogger(__filename);
+
+const logger = getLogger(__filename);
 
 /**
  * How long since Jicofo is supposed to send a session-initiate, before
@@ -946,13 +947,15 @@ JitsiConference.prototype.addTrack = function(track) {
     const mediaType = track.getType();
     const localTracks = this.rtc.getLocalTracks(mediaType);
 
+    // Ensure there's exactly 1 local track of each media type in the conference.
+    if (localTracks.length > 0) {
+        // Don't be excessively harsh and severe if the API client happens to attempt to add the same local track twice.
+        if (track === localTracks[0]) {
                 return Promise.resolve(track);
-            }
+        }
 
         //  hasevr EXT_MULTI_VIDEO jitsi party parmits many video tracks
         //	return Promise.reject(new Error(`Cannot add second ${mediaType} track to the conference`));
-        }
-
     }
 
     return this.replaceTrack(null, track);

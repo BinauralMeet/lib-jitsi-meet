@@ -455,15 +455,6 @@ JitsiConferenceEventManager.prototype.setupRTCListeners = function() {
         RTCEvents.REMOTE_TRACK_REMOVED,
         conference.onRemoteTrackRemoved.bind(conference));
 
-    //  hasevr -----------------------------------
-    rtc.addListener(
-        RTCEvents.REMOTE_TRACK_VIDEOTYPE_CHANGING,
-        conference.onRemoteTrackVideoTypeChanging.bind(conference));
-    rtc.addListener(
-        RTCEvents.REMOTE_TRACK_VIDEOTYPE_CHANGED,
-        conference.onRemoteTrackVideoTypeChanged.bind(conference));
-    //  -------------------------------------------
-
     rtc.addListener(RTCEvents.DOMINANT_SPEAKER_CHANGED,
         id => {
             if (conference.lastDominantSpeaker !== id && conference.room) {
