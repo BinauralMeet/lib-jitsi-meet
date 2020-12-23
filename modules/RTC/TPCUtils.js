@@ -457,7 +457,9 @@ export class TPCUtils {
             && Array.isArray(parameters.encodings)
             && this.pc.isSimulcastOn()
             && localVideoTrack
-            && localVideoTrack.videoType !== VideoType.DESKTOP)) {
+            //  hasevr: DESKTOP -> other than camera
+            //            && localVideoTrack.videoType !== VideoType.DESKTOP)) {
+            && localVideoTrack.videoType === VideoType.CAMERA)) {
             return;
         }
 
