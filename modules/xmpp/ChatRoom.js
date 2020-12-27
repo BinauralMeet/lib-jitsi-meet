@@ -1548,6 +1548,7 @@ export default class ChatRoom extends Listenable {
      * info or <tt>null</tt> either if there is no presence available or if
      * the media type given is invalid.
      */
+    //  EXT_MULTI_VIDEO this handles multiple video tracks
     getMediaPresenceInfo(endpointId, mediaType) {
         // Will figure out current muted status by looking up owner's presence
         const pres = this.lastPresences[`${this.roomjid}/${endpointId}`];
@@ -1558,19 +1559,29 @@ export default class ChatRoom extends Listenable {
         }
         const data = {
             muted: false, // unmuted by default
-            videoType: undefined // no video type by default
+            videoTypes: undefined // no video type info by default
         };
         let mutedNode = null;
+
+        //  hasevr
+        const videoTypeNode = filterNodeFromPresenceJSON(pres, 'videoTypes');
+        if (videoTypeNode.length > 0){
+            data.videoTypes = JSON.parse(videoTypeNode[0].value);
+        }
 
         if (mediaType === MediaType.AUDIO) {
             mutedNode = filterNodeFromPresenceJSON(pres, 'audiomuted');
         } else if (mediaType === MediaType.VIDEO) {
             mutedNode = filterNodeFromPresenceJSON(pres, 'videomuted');
+            /*  removed by hasevr .... audio tracks also need videoType
             const videoTypeNode = filterNodeFromPresenceJSON(pres, 'videoType');
+
+            console.log("getMediaPresenceInfo: pres:", pres)
 
             if (videoTypeNode.length > 0) {
                 data.videoType = videoTypeNode[0].value;
             }
+             */
         } else {
             logger.error(`Unsupported media type: ${mediaType}`);
 

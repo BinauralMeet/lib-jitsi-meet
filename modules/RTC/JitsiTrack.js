@@ -404,6 +404,17 @@ export default class JitsiTrack extends EventEmitter {
 
         return undefined
     }
+    /// timestamp is set when videoType is sent or received for the first time.
+    timestamp = undefined;
+    getTimestamp(){
+        if (!this.timestamp){
+            this.timestamp = Date.now()
+        }
+        return this.timestamp
+    }
+    setTimestamp(newTimestamp){
+        this.timestamp = newTimestamp
+    }
     /// 
     setContentId(contentId) {
         return this.videoType = contentId
