@@ -25,8 +25,8 @@ import { SIM_LAYER_RIDS, tpcLog, TPCUtils } from './TPCUtils';
 
 // FIXME SDP tools should end up in some kind of util module
 
-const videoTypelog = console.debug  //  logger for videoType communication
-const ssrcLog = console.debug       //  logger for ssrcs
+const videoTypelog = ()=>{} //console.log  //  logger for videoType communication
+const ssrcLog = ()=>{} //   console.log       //  logger for ssrcs
 
 const logger = getLogger(__filename);
 const DEGRADATION_PREFERENCE_CAMERA = 'maintain-framerate';
@@ -154,6 +154,12 @@ export default function TraceablePeerConnection(
      * @type {Map<string, Map<TrackID, JitsiRemoteTrack>>}
      */
     this.remoteTrackMaps = new Map();
+
+    /**  hasevr  EXT_MULTI_VIDEO
+     * Map<endpointId, Map<ssrc|msid, videoType>> 
+     * @type {Map<string, Map<ssrc|msid, videoType>>}
+     * */
+    this.remoteVideoTypeMaps = new Map();
 
     /**
      * A map which stores local tracks mapped by {@link JitsiLocalTrack.rtcId}
@@ -565,31 +571,35 @@ TraceablePeerConnection.prototype._peerVideoTypeChanged = function(
     }
 
     const remoteVideoTypes = JSON.parse(videoTypeJSONString);
+    this.remoteVideoTypeMaps.set(endpointId, new Map(remoteVideoTypes))
     const remoteTrackMap = this.remoteTrackMaps.get(endpointId);
     if (remoteTrackMap){
-        let str='';
-        remoteTrackMap.forEach( (track) => {
-            str = `${str}${str?', ':''}${track.getSSRC()}-${track.type}-${track.videoType}`;
-        })
-        videoTypelog(`TPC _peerVideoTypeChanged: ep ${endpointId}: ${str} -> ${videoTypeJSONString}`);
+        console.log(`TPC _peerVideoTypeChanged: ep ${endpointId}: ${videoTypeJSONString}`);
 
         for(const remoteVideoType of remoteVideoTypes){
             const ssrc = remoteVideoType[0];
             const videoType = remoteVideoType[1];
-            const remoteTrack = remoteTrackMap.get(ssrc)
+            let remoteTrack = remoteTrackMap.get(ssrc);
+            if (!remoteTrack){
+                remoteTrackMap.forEach(track => {
+                    if (track.stream.id === ssrc){
+                        remoteTrack = track
+                    } 
+                })
+            }
             if (remoteTrack){
                 if (remoteTrack.videoType === undefined){
-                    //  videoTypelog(`TPC ep:${endpointId} ssrc=${remoteTrack.ssrc} videoType ''->'${videoType}'.`)
+                    //  videoTypelog(`TPC ep:${endpointId} ssrc=${remoteTrack.getSsrc()} videoType ''->'${videoType}'.`)
                     remoteTrack.videoType = videoType
                     this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_ADDED, remoteTrack, this);    //  Emit REMOTE_TRACK_ADDED after videoType assigned
                 }else if (remoteTrack.videoType !== videoType){
-                    //  videoTypelog(`TPC ep:${endpointId} ssrc=${remoteTrack.ssrc} videoType '${remoteTrack.videoType}'->'${videoType}'.`)
+                    //  videoTypelog(`TPC ep:${endpointId} ssrc=${remoteTrack.getSsrc()} videoType '${remoteTrack.videoType}'->'${videoType}'.`)
                     this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_VIDEOTYPE_CHANGING, remoteTrack, videoType, this);
                     const prevType = remoteTrack.videoType
                     remoteTrack.videoType = videoType
                     this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_VIDEOTYPE_CHANGED, remoteTrack, prevType, this);
                 }else{
-                    //  videoTypelog(`TPC ep:${endpointId} ssrc=${remoteTrack.ssrc} videoType '${videoType}'.`)
+                    //  videoTypelog(`TPC ep:${endpointId} ssrc=${remoteTrack.getSsrc()} videoType '${videoType}'.`)
                 }
             }else {
                 videoTypelog(`TPC _peerVideoTypeChanged: A track with ssrc ${ssrc} is not found in endpoint ${endpointId}`);
@@ -942,7 +952,7 @@ TraceablePeerConnection.prototype._remoteTrackAdded = function(stream, track, tr
 
 
     const peerMediaInfo
-        = this.signalingLayer.getPeerMediaInfo(ownerEndpointId, mediaType, trackSsrc);
+        = this.signalingLayer.getPeerMediaInfo(ownerEndpointId, mediaType);
 
     if (!peerMediaInfo) {
         GlobalOnErrorHandler.callErrorHandler(
@@ -954,7 +964,13 @@ TraceablePeerConnection.prototype._remoteTrackAdded = function(stream, track, tr
     }
 
     const muted = peerMediaInfo.muted;
-    const videoType = peerMediaInfo.videoType; // can be undefined
+    //const videoType = peerMediaInfo.videoType; // hasevr not for EXT_MULTI_VIDEO
+    // hasevr for EXT_MULTI_VIDEO
+    const remoteVideoTypeMap = this.remoteVideoTypeMaps.get(ownerEndpointId)
+    let videoType = remoteVideoTypeMap && remoteVideoTypeMap.get(trackSsrc)
+    if (!videoType){
+        videoType = remoteVideoTypeMap && remoteVideoTypeMap.get(stream.id)
+    }
 
     this._createRemoteTrack(
         ownerEndpointId, stream, track, mediaType, videoType, ssrcs, muted);
@@ -1035,9 +1051,9 @@ TraceablePeerConnection.prototype._createRemoteTrack = function(
 	//	hasevr EXT_VIDEOTYPE
     if (videoType){
         this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_ADDED, remoteTrack, this);
-        console.debug(`remoteTrack ssrc=${remoteTrack.ssrc} videoType '${videoType}' created.`, remoteTrack);
+        console.warn(`remoteTrack ssrc=${remoteTrack.getSSRC()} videoType '${videoType}' created.`, remoteTrack);
     }else{
-        console.warn(`remoteTrack ssrc=${remoteTrack.ssrc} craeted without videoType. emit REMOTE_TRACK_ADDED later`, remoteTrack);
+        console.warn(`remoteTrack ssrc=${remoteTrack.getSSRC()} craeted without videoType. emit REMOTE_TRACK_ADDED later`, remoteTrack);
     }
 
     return remoteTrack
@@ -2848,12 +2864,17 @@ TraceablePeerConnection.prototype._processLocalSSRCsMap = function(ssrcMap) {
                 logger.debug(
                     `The local SSRC(${newSSRCNum}) for ${track} ${trackMSID}`
                      + `is still up to date in ${this}`);
+                //  hasevr
+                this.sendVideoTypes();
             }
         } else if (!track.isVideoTrack() && !track.isMuted()) {
             // It is normal to find no SSRCs for a muted video track in
             // the local SDP as the recv-only SSRC is no longer munged in.
             // So log the warning only if it's not a muted video track.
             logger.warn(`No SSRCs found in the local SDP for ${track} MSID: ${trackMSID} in ${this}`);
+ 
+            //  hasevr
+            this.sendVideoTypes();
         }
     }
 };
@@ -2979,9 +3000,9 @@ TraceablePeerConnection.prototype.getPrimarySsrc = function(rtcId) {
 TraceablePeerConnection.prototype.sendVideoTypes = function() {
     const localVideoTypes = new Map();
     for(const track of this.localTracks.values()){
-        const ssrc = this.getLocalSSRC(track);
-        if (ssrc && track.videoType){
-            localVideoTypes.set(ssrc, track.videoType)
+        let ssrc = this.getLocalSSRC(track);
+        if (track.videoType){
+            localVideoTypes.set(ssrc ? ssrc : track.stream.id, track.videoType)
         }
     }
     this.signalingLayer.sendVideoTypes(localVideoTypes)
