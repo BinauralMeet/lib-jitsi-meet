@@ -120,7 +120,7 @@ export default class SignalingLayerImpl extends SignalingLayer {
     sendVideoTypes(videoTypes){
         if (this.chatRoom) {
             this.chatRoom.addToPresence('videoTypes', {
-                value: JSON.stringify(Array.from(videoTypes.entries()))
+                value: JSON.stringify(videoTypes)
             });
             this.chatRoom.sendPresence()
         }else{

@@ -160,7 +160,7 @@ export default function TraceablePeerConnection(
      * (one track per media type per user's JID).
      * @type {Map<string, Map<TrackID, JitsiRemoteTrack>>}
      */
-    this.remoteTrackMaps = new Map();
+    this.remoteTracksMap = new Map();
 
     /**  hasevr  EXT_MULTI_VIDEO
      * Map<endpointId, Map<ssrc|msid, videoType>> 
@@ -567,93 +567,32 @@ TraceablePeerConnection.prototype._peerVideoTypeChanged = function(
     }
 };
 */
-TraceablePeerConnection.prototype.assignVideoType = function(endpointId){
-    const remoteTrackMap = this.remoteTrackMaps.get(endpointId);
-    if (remoteTrackMap){
-        const remoteVideoTypesByTimeNew = []
-        const remoteTrackTimestampMatched = new Map()
+TraceablePeerConnection.prototype.assignVideoTypes = function(endpointId){
+    const remoteTracks = this.remoteTracksMap.get(endpointId);
+    if (remoteTracks){
         const videoTypes = this.remoteVideoTypeMaps.get(endpointId)
-        console.log(`assignVideoType ${JSON.stringify(videoTypes)}`, )
-        for(const remoteVideoType of videoTypes){
-            const ssrc = remoteVideoType[0];
-            const videoType = remoteVideoType[1];
-            if (!isNumber(ssrc)){
-                assert(ssrc.substr(0,5) === 'time_')
-                const timestamp = Number(ssrc.substr(5));
-                const exactMatch = Array.from(remoteTrackMap.values()).find(track => track.getTimestamp() === timestamp)
-                if (exactMatch){
-                    remoteTrackTimestampMatched.set(timestamp, exactMatch)
+        if (remoteTracks.length === (videoTypes ? videoTypes.length : 0)){
+            remoteTracks.forEach((track, idx) => {
+                const videoType = videoTypes[idx][1]
+                if (!track.videoType){
+                    track.videoType = videoType;
+                    //  Emit REMOTE_TRACK_ADDED after videoType assigned
+                    this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_ADDED, track, this);    
+                }else if (track.videoType !== videoType){
+                    track.videoType = videoType;
+                    //  videoTypelog(`TPC ep:${endpointId} ssrc=${track.getSSRC()} videoType '${track.videoType}'->'${videoType}'.`)
+                    this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_VIDEOTYPE_CHANGING, track, videoType, this);
                 }else{
-                    remoteVideoTypesByTimeNew.push([timestamp, videoType])
-                }
-            }
-        }
-        const remoteTrackRemain = new Map(remoteTrackMap);   //  tracks without matching videoType info.
-        remoteTrackTimestampMatched.forEach(t => remoteTrackRemain.delete(t.getSSRC()))
-        //  find matching between remain and new
-        const timeTrackMap = new Map()
-        remoteVideoTypesByTimeNew.forEach((byTime) => {
-            let minDist = undefined
-            let minTrack = undefined
-            remoteTrackRemain.forEach((track) => {
-                const dist = Math.abs(byTime[0] - track.getTimestamp())
-                if (!minDist || minDist > dist){
-                    minDist = dist;
-                    minTrack = track;
+                    //  no change                    
+                    //  videoTypelog(`TPC ep:${endpointId} ssrc=${track.getSSRC()} videoType '${videoType}'.`)
                 }
             })
-            if (minTrack){
-                let trackSet = timeTrackMap.get(byTime[0]);
-                if (!trackSet){
-                    trackSet = new Set();
-                    timeTrackMap.set(byTime[0], trackSet);
-                }
-                trackSet.add(minTrack);
-            }
-        })
-        timeTrackMap.forEach((tracks, time)=>{
-            if (tracks.size === 1){
-                tracks.forEach((track) => {
-                    track.setTimestamp(time)
-                    remoteTrackTimestampMatched.set(time, track)
-                })
-            }else if (tracks.size){
-                console.warn(`Timestamp: ${time} matches more than two tracks ${
-                    Array.from(tracks.values()).map(track => track.getSSRC())} refrain to assign.`)
-            }
-        })
-
-        for(const remoteVideoType of videoTypes){
-            const ssrc = remoteVideoType[0];
-            const videoType = remoteVideoType[1];
-            let remoteTrack = undefined
-            if (isNumber(ssrc)){
-                remoteTrack = remoteTrackMap.get(ssrc)
-            }else{  //  ssrc is timestamp
-                const timestamp = Number(ssrc.substr(5));
-                remoteTrack = remoteTrackTimestampMatched.get(timestamp)
-            }
-            if (remoteTrack){
-                if (remoteTrack.videoType === undefined){
-                    console.log(`TPC ep:${endpointId} ssrc=${remoteTrack.getSSRC()} videoType ''->'${videoType}'. REMOTE_TRACK_ADDED`)
-                    remoteTrack.videoType = videoType
-                    this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_ADDED, remoteTrack, this);    //  Emit REMOTE_TRACK_ADDED after videoType assigned
-                }else if (remoteTrack.videoType !== videoType){
-                    //  videoTypelog(`TPC ep:${endpointId} ssrc=${remoteTrack.getSSRC()} videoType '${remoteTrack.videoType}'->'${videoType}'.`)
-                    this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_VIDEOTYPE_CHANGING, remoteTrack, videoType, this);
-                    const prevType = remoteTrack.videoType
-                    remoteTrack.videoType = videoType
-                    this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_VIDEOTYPE_CHANGED, remoteTrack, prevType, this);
-                }else{
-                    //  videoTypelog(`TPC ep:${endpointId} ssrc=${remoteTrack.getSSRC()} videoType '${videoType}'.`)
-                }
-            }else {
-                videoTypelog(`TPC assignVideoType: A track with ssrc ${ssrc} is not found in endpoint ${endpointId}`);
-            }
+            console.log(`assignVideoTypes from ${endpointId} result: ${JSON.stringify(remoteTracks.map(r => [r.getSSRC(), r.videoType]))}.`)
+        }else{
+            console.log(`assignVideoTypes from ${endpointId} length not matched: track ${remoteTracks.length} vt ${videoTypes ? videoTypes.length : 0}. Refrain to assign.`)
         }
-        console.log(`assignVideoType result: ${JSON.stringify(Array.from(remoteTrackMap.values()).map(r => [r.getSSRC(), r.videoType]))}`)
     }else{
-        videoTypelog(`TPC assignVideoType: remoteTrackMap for ${endpointId} is not defined yet.`);
+        videoTypelog(`TPC assignVideoTypes: remoteTrackMap for ${endpointId} is not defined yet.`);
     }
 }
 TraceablePeerConnection.prototype._peerVideoTypeChanged = function(
@@ -666,9 +605,9 @@ TraceablePeerConnection.prototype._peerVideoTypeChanged = function(
         return;
     }
     const remoteVideoTypes = JSON.parse(videoTypeJSONString);
-    console.log(`TPC _peerVideoTypeChanged: ep ${endpointId}:${videoTypeJSONString}`);
+    //  console.log(`TPC _peerVideoTypeChanged: ep ${endpointId}:${videoTypeJSONString}`);
     this.remoteVideoTypeMaps.set(endpointId, remoteVideoTypes)
-    this.assignVideoType(endpointId);
+    this.assignVideoTypes(endpointId);
 };
 
 /**
@@ -776,12 +715,12 @@ TraceablePeerConnection.prototype.getRemoteTracks = function(
         mediaType) {
     const remoteTracks = [];
     const endpoints
-        = endpointId ? [ endpointId ] : this.remoteTrackMaps.keys();
+        = endpointId ? [ endpointId ] : this.remoteTracksMap.keys();
 
     for (const endpoint of endpoints) {
-        const remoteTrackMap = this.remoteTrackMaps.get(endpoint);
+        const tracks = this.remoteTracksMap.get(endpoint);
 
-        if (!remoteTrackMap) {
+        if (!tracks) {
 
             // Otherwise an empty Map() would have to be allocated above
             // eslint-disable-next-line no-continue
@@ -799,7 +738,7 @@ TraceablePeerConnection.prototype.getRemoteTracks = function(
                 }
             }
         }*/
-        remoteTrackMap.forEach((track) => {
+        tracks.forEach((track) => {
             if (track && (!mediaType || mediaType === track.type)){
                 remoteTracks.push(track);
             }
@@ -1056,11 +995,12 @@ TraceablePeerConnection.prototype._createRemoteTrack = function(
         mediaType,
         ssrcs,
         muted) {
-    let remoteTrackMap = this.remoteTrackMaps.get(ownerEndpointId);
 
-    if (!remoteTrackMap) {
-        remoteTrackMap = new Map();
-        this.remoteTrackMaps.set(ownerEndpointId, remoteTrackMap);
+    let remoteTracks = this.remoteTracksMap.get(ownerEndpointId);
+
+    if (!remoteTracks) {
+        remoteTracks = [];
+        this.remoteTracksMap.set(ownerEndpointId, remoteTracks);
     }
 
 	//	EXT_MULTI_VIDEO ------------------------------------
@@ -1102,11 +1042,14 @@ TraceablePeerConnection.prototype._createRemoteTrack = function(
 
 	//	hasevr EXT_MULTI_VIDEO ------------------------------------
     //remoteTrackMap.set(mediaType, remoteTrack);
-    remoteTrackMap.set(remoteTrack.getSSRC(), remoteTrack);
+    const found = remoteTracks.find(t => t.getSSRC() === remoteTrack.getSSRC())
+    if (!found){
+        remoteTracks.push(remoteTrack);
+    }
     //	----------------------------------------------------
 
     //	hasevr EXT_VIDEOTYPE
-    this.assignVideoType(ownerEndpointId)
+    this.assignVideoTypes(ownerEndpointId)
     if (!remoteTrack.videoType){
         console.warn(`remoteTrack ssrc=${remoteTrack.getSSRC()} craeted without videoType. emit REMOTE_TRACK_ADDED later`, remoteTrack);
     }
@@ -1202,8 +1145,8 @@ TraceablePeerConnection.prototype._getRemoteTrackById = function(
         streamId,
         trackId) {
     // .find will break the loop once the first match is found
-    for (const remoteTrackMap of this.remoteTrackMaps.values()) {
-        for (const track of remoteTrackMap.values()) {
+    for (const remoteTracks of this.remoteTracksMap.values()) {
+        for (const track of remoteTracks) {
             // FIXME verify and try to use ===
             /* eslint-disable eqeqeq */
             if (track.getStreamId() == streamId
@@ -1226,8 +1169,7 @@ TraceablePeerConnection.prototype._getRemoteTrackById = function(
  * @returns {JitsiRemoteTrack[]}
  */
 TraceablePeerConnection.prototype.removeRemoteTracks = function(owner) {
-    const removedTracks = [];
-    const remoteTrackMap = this.remoteTrackMaps.get(owner);
+    const removedTracks = this.remoteTracksMap.get(owner);
 
 	//	EXT_MULTI_VIDEO -----------------------------------------
 /*    if (remoteTracksMap) {
@@ -1237,14 +1179,7 @@ TraceablePeerConnection.prototype.removeRemoteTracks = function(owner) {
         removedVideoTrack && removedTracks.push(removedVideoTrack);
 
     }*/
-    if (remoteTrackMap) {
-        remoteTrackMap.forEach((track) => {
-            if (track) {
-                removedTracks.push(track);
-            }
-        })
-    }
-    this.remoteTrackMaps.delete(owner);
+    this.remoteTracksMap.delete(owner);
 	//	----------------------------------------------------
 
     logger.debug(
@@ -1262,7 +1197,7 @@ TraceablePeerConnection.prototype.removeRemoteTracks = function(owner) {
 TraceablePeerConnection.prototype._removeRemoteTrack = function(toBeRemoved) {
     toBeRemoved.dispose();
     const participantId = toBeRemoved.getParticipantId();
-    const remoteTrackMap = this.remoteTrackMaps.get(participantId);
+    const remoteTracks = this.remoteTracksMap.get(participantId);
 
 	//	EXT_MULTI_VIDEO-------------------------------------
 /*
@@ -1274,12 +1209,18 @@ TraceablePeerConnection.prototype._removeRemoteTrack = function(toBeRemoved) {
             `Failed to remove ${toBeRemoved} - type mapping messed up ?`);
     }
     */
-    if (!remoteTrackMap) {
+    if (!remoteTracks) {
         logger.error(
             `removeRemoteTrack: no remote tracks map for ${participantId}`);
-    } else if (!remoteTrackMap.delete(toBeRemoved.getSSRC())) {
+    } else {
+       const idx = remoteTracks.findIndex(track => track === toBeRemoved) 
+       if (idx !== -1){
+            remoteTracks.splice(idx, 1);
+            this.assignVideoTypes();
+       }else{
         logger.error(
-        `Failed to remove ${toBeRemoved} - remoteTrack mapping messed up ?`);
+            `Failed to remove ${toBeRemoved} - remoteTrack mapping messed up ?`);
+       }
     }
 	//	----------------------------------------------------
     this.eventEmitter.emit(RTCEvents.REMOTE_TRACK_REMOVED, toBeRemoved);
@@ -1765,9 +1706,9 @@ TraceablePeerConnection.prototype.containsTrack = function(track) {
     }
 
     const participantId = track.getParticipantId();
-    const remoteTrackMap = this.remoteTrackMaps.get(participantId);
+    const remoteTracks = this.remoteTracksMap.get(participantId);
 
-    return Boolean(remoteTrackMap && remoteTrackMap.get(track.getSSRC()) === track);
+    return Boolean(remoteTracks && remoteTracks.find(t === track));
 };
 
 /**
@@ -2689,12 +2630,12 @@ TraceablePeerConnection.prototype.close = function() {
     this.signalingLayer.off(
         SignalingEvents.PEER_VIDEO_TYPE_CHANGED, this._peerVideoTypeChanged);
 
-    for (const peerTracks of this.remoteTrackMaps.values()) {
-        for (const remoteTrack of peerTracks.values()) {
+    for (const peerTracks of this.remoteTracksMap.values()) {
+        for (const remoteTrack of peerTracks) {
             this._removeRemoteTrack(remoteTrack);
         }
     }
-    this.remoteTrackMaps.clear();
+    this.remoteTracksMap.clear();
 
     this._addedStreams = [];
 
@@ -3052,22 +2993,21 @@ TraceablePeerConnection.prototype.getPrimarySsrc = function(rtcId) {
     return ssrc;
 }
 
-const TIMESTAMP_TEST = true
 TraceablePeerConnection.prototype.sendVideoTypes = function() {
-    const localVideoTypes = new Map();
+    const localVideoTypes = [];
     for(const track of this.localTracks.values()){
         let ssrc = this.getLocalSSRC(track);
-        if (track.videoType){
-            localVideoTypes.set(!TIMESTAMP_TEST && ssrc ? ssrc : `time_${track.getTimestamp()}`, track.videoType)
-        }
+        localVideoTypes.push([ssrc, track.videoType])
     }
     this.signalingLayer.sendVideoTypes(localVideoTypes)
-    console.log(`TPC sendVideoTypes`, localVideoTypes)
+    console.log(`TPC sendVideoTypes:${JSON.stringify(localVideoTypes)}`)
+    /*
     let str='';
     this.localTracks.forEach( (track, rtcId) => {
         const info = this.localSSRCs.get(rtcId);
         const ssrc = info && info.ssrcs.length ? info.ssrcs[0] : 'x';
         str = `${str}${str?', ':''}${track.type}-${track.videoType} ${ssrc}`;
     })
-    videoTypelog(`TPC locals:`, str);
+    videoTypelog(`TPC locals:`, str);   
+    */
 }
