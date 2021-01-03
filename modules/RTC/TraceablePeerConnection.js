@@ -22,7 +22,6 @@ import JitsiRemoteTrack from './JitsiRemoteTrack';
 import RTC from './RTC';
 import RTCUtils from './RTCUtils';
 import { SIM_LAYER_RIDS, tpcLog, TPCUtils } from './TPCUtils';
-import { isNumber } from 'lodash';
 
 // FIXME SDP tools should end up in some kind of util module
 
