@@ -1822,6 +1822,7 @@ export default class JingleSessionPC extends JingleSession {
      */
     _responderRenegotiate(remoteDescription) {
         logger.debug('Renegotiate: setting remote description');
+        //	console.log(`_responderRenegotiate remote: ${JSON.stringify(remoteDescription)}`);
 
         return this.peerconnection.setRemoteDescription(remoteDescription)
             .then(() => {
@@ -1831,6 +1832,7 @@ export default class JingleSessionPC extends JingleSession {
                     .then(answer => {
                         logger.debug('Renegotiate: setting local description');
 
+                        //	console.log(`_responderRenegotiate answer: ${JSON.stringify(answer)}`);
                         return this.peerconnection.setLocalDescription(answer);
                     });
             });

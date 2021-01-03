@@ -200,8 +200,6 @@ export class TPCUtils {
     */
     addTrack(localTrack, isInitiator) {
         const track = localTrack.getTrack();
-        console.log(`addTrack label:${track.label}`)
-        track.label = 'hasevr';
 
         if (isInitiator) {
             // Use pc.addTransceiver() for the initiator case when local tracks are getting added

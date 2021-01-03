@@ -950,11 +950,17 @@ JitsiConference.prototype.addTrack = function(track) {
     // Ensure there's exactly 1 local track of each media type in the conference.
     if (localTracks.length > 0) {
         // Don't be excessively harsh and severe if the API client happens to attempt to add the same local track twice.
+        //  hasevr EXT_MULTI_VIDEO -------------------------------------------
+        /*
         if (track === localTracks[0]) {
                 return Promise.resolve(track);
+        }   */
+        if (localTracks.find(t => t === track)){
+            return Promise.resolve(track);
         }
+        //  ------------------------------------------------------------------
 
-        //  hasevr EXT_MULTI_VIDEO jitsi party parmits many video tracks
+        //  hasevr EXT_MULTI_VIDEO Binaural Meet permits many video tracks
         //	return Promise.reject(new Error(`Cannot add second ${mediaType} track to the conference`));
     }
 
