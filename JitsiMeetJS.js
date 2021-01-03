@@ -138,6 +138,8 @@ export default _mergeNamespaceAndModule({
 
     version: '{#COMMIT_HASH#}',
 
+    browser,
+    
     JitsiConnection,
 
     /**
