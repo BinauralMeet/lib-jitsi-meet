@@ -63,7 +63,6 @@ export default class BridgeChannel {
                     'JVB data channel', {
                         protocol: 'http://jitsi.org/protocols/colibri'
                     });
-            //	console.log('BridgeChannel constructor calls createDataChannel.');
 
             // Handle the RTCDataChannel.
             this._handleChannel(datachannel);
@@ -207,8 +206,7 @@ export default class BridgeChannel {
             lastN: value
         });
     }
-
-    /**
+   /**
      * Sends a "perceptive endpoints value" or percieve message via the channel.
      * @param {number} value The new value for array of perceptive endpoints.
      */

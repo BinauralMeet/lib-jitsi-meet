@@ -42,7 +42,11 @@ import RandomUtil from './modules/util/RandomUtil';
 import ComponentsVersions from './modules/version/ComponentsVersions';
 import VideoSIPGW from './modules/videosipgw/VideoSIPGW';
 import * as VideoSIPGWConstants from './modules/videosipgw/VideoSIPGWConstants';
-import { JITSI_MEET_MUC_TYPE } from './modules/xmpp/xmpp';
+import {
+    FEATURE_E2EE,
+    FEATURE_JIGASI,
+    JITSI_MEET_MUC_TYPE
+} from './modules/xmpp/xmpp';
 import * as MediaType from './service/RTC/MediaType';
 import VideoType from './service/RTC/VideoType';
 import {
@@ -1511,9 +1515,11 @@ JitsiConference.prototype.muteParticipant = function(id) {
  * @param status the initial status if any
  * @param identity the member identity, if any
  * @param botType the member botType, if any
+ * @param fullJid the member full jid, if any
+ * @param features the member botType, if any
  */
 JitsiConference.prototype.onMemberJoined = function(
-        jid, nick, role, isHidden, statsID, status, identity, botType) {
+        jid, nick, role, isHidden, statsID, status, identity, botType, fullJid, features) {
     const id = Strophe.getResourceFromJid(jid);
 
     if (id === 'focus' || this.myUserId() === id) {
@@ -1525,6 +1531,8 @@ JitsiConference.prototype.onMemberJoined = function(
 
     participant._role = role;
     participant._botType = botType;
+    participant._features = features || new Set();
+
     this.participants[id] = participant;
     this.eventEmitter.emit(
         JitsiConferenceEvents.USER_JOINED,
@@ -1533,11 +1541,26 @@ JitsiConference.prototype.onMemberJoined = function(
 
     this._updateFeatures(participant);
 
-    this._maybeStartOrStopP2P();
+    // maybeStart only if we had finished joining as then we will have information for the number of participants
+    if (this.isJoined()) {
+        this._maybeStartOrStopP2P();
+    }
+
     this._maybeSetSITimeout();
 };
 
 /* eslint-enable max-params */
+
+/**
+ * Get notified when we joined the room.
+ *
+ * FIXME This should NOT be exposed!
+ *
+ * @private
+ */
+JitsiConference.prototype._onMucJoined = function() {
+    this._maybeStartOrStopP2P();
+};
 
 /**
  * Updates features for a participant.
@@ -1551,11 +1574,11 @@ JitsiConference.prototype._updateFeatures = function(participant) {
             participant._supportsDTMF = features.has('urn:xmpp:jingle:dtmf:0');
             this.updateDTMFSupport();
 
-            if (features.has('http://jitsi.org/protocol/jigasi')) {
+            if (features.has(FEATURE_JIGASI)) {
                 participant.setProperty('features_jigasi', true);
             }
 
-            if (features.has('https://jitsi.org/meet/e2ee')) {
+            if (features.has(FEATURE_E2EE)) {
                 participant.setProperty('features_e2ee', true);
             }
         })
@@ -3151,7 +3174,7 @@ JitsiConference.prototype._maybeStartOrStopP2P = function(userLeftEvent) {
 JitsiConference.prototype._shouldBeInP2PMode = function() {
     const peers = this.getParticipants();
     const peerCount = peers.length;
-    const hasBotPeer = peers.find(p => p._botType === 'poltergeist') !== undefined;
+    const hasBotPeer = peers.find(p => p._botType === 'poltergeist' || p._features.has(FEATURE_JIGASI)) !== undefined;
     const shouldBeInP2P = peerCount === 1 && !hasBotPeer;
 
     logger.debug(`P2P? peerCount: ${peerCount}, hasBotPeer: ${hasBotPeer} => ${shouldBeInP2P}`);
