@@ -373,7 +373,7 @@ JitsiConference.prototype._init = function(options = {}) {
                 this.sendMessage(
                     message, to, true /* sendThroughVideobridge */);
             } catch (error) {
-                logger.warn('Failed to send E2E ping request or response.', error && error.msg);
+                logger.warn(`Failed to send E2E ping request or response to ${to}.`, error && error.msg);
             }
         });
 
