@@ -37,15 +37,6 @@ export default class BrowserCapabilities extends BrowserDetection {
     }
 
     /**
-     * Check whether or not the current browser support peer to peer connections
-     * @return {boolean} <tt>true</tt> if p2p is supported or <tt>false</tt>
-     * otherwise.
-     */
-    supportsP2P() {
-        return !this.usesUnifiedPlan();
-    }
-
-    /**
      * Checks if the current browser is Chromium based, that is, it's either
      * Chrome / Chromium or uses it as its engine, but doesn't identify as
      * Chrome.
@@ -120,7 +111,7 @@ export default class BrowserCapabilities extends BrowserDetection {
      * otherwise.
      */
     supportsVideoMuteOnConnInterrupted() {
-        return this.isChromiumBased() || this.isReactNative() || this.isWebKitBased();
+        return this.isChromiumBased() || this.isReactNative();
     }
 
     /**
@@ -139,11 +130,10 @@ export default class BrowserCapabilities extends BrowserDetection {
      * @returns {boolean}
      */
     supportsCodecPreferences() {
-        return this.usesUnifiedPlan()
-            && Boolean(window.RTCRtpTransceiver
-            && window.RTCRtpTransceiver.setCodecPreferences
+        return Boolean(window.RTCRtpTransceiver
+            && typeof window.RTCRtpTransceiver.setCodecPreferences !== 'undefined'
             && window.RTCRtpReceiver
-            && window.RTCRtpReceiver.getCapabilities)
+            && typeof window.RTCRtpReceiver.getCapabilities !== 'undefined')
 
             // this is not working on Safari because of the following bug
             // https://bugs.webkit.org/show_bug.cgi?id=215567
@@ -208,15 +198,6 @@ export default class BrowserCapabilities extends BrowserDetection {
     }
 
     /**
-     * Checks if the browser uses plan B.
-     *
-     * @returns {boolean}
-     */
-    usesPlanB() {
-        return !this.usesUnifiedPlan();
-    }
-
-    /**
      * Checks if the browser uses SDP munging for turning on simulcast.
      *
      * @returns {boolean}
@@ -226,42 +207,12 @@ export default class BrowserCapabilities extends BrowserDetection {
     }
 
     /**
-     * Checks if the browser uses unified plan.
-     *
-     * @returns {boolean}
-     */
-    usesUnifiedPlan() {
-        if (this.isFirefox() || this.isWebKitBased()) {
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * Returns whether or not the current browser should be using the new
-     * getUserMedia flow, which utilizes the adapter shim. This method should
-     * be temporary and used while migrating all browsers to use adapter and
-     * the new getUserMedia.
-     *
-     * @returns {boolean}
-     */
-    usesNewGumFlow() {
-        if (this.isChromiumBased() || this.isFirefox() || this.isWebKitBased()) {
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * Checks if the browser uses webrtc-adapter. All browsers using the new
-     * getUserMedia flow.
+     * Checks if the browser uses webrtc-adapter. All browsers except React Native do.
      *
      * @returns {boolean}
      */
     usesAdapter() {
-        return this.usesNewGumFlow();
+        return !this.isReactNative();
     }
 
     /**
@@ -320,12 +271,20 @@ export default class BrowserCapabilities extends BrowserDetection {
     }
 
     /**
-     * Checks if the browser supports the "sdpSemantics" configuration option.
-     * https://webrtc.org/web-apis/chrome/unified-plan/
+     * Checks if the browser supports unified plan.
      *
      * @returns {boolean}
      */
-    supportsSdpSemantics() {
+    supportsUnifiedPlan() {
+        return !this.isReactNative();
+    }
+
+    /**
+     * Checks if the browser supports voice activity detection via the @type {VADAudioAnalyser} service.
+     *
+     * @returns {boolean}
+     */
+    supportsVADDetection() {
         return this.isChromiumBased();
     }
 
