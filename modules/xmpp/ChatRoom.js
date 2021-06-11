@@ -407,6 +407,13 @@ export default class ChatRoom extends Listenable {
      * @param {Strophe.Status} status - The Strophe connection status.
      */
     onConnStatusChanged(status) {
+		/*
+        const StatusString = ['ERROR', 'CONNECTING', 'CONNFAIL', 'AUTHENTICATING','AUTHFAIL',
+            'CONNECTED', 'DISCONNECTED', 'DISCONNECTING', 'ATTACHED', 'REDIRECT', 'CONNTIMEOUT',
+            'BINDREQUIRED']
+    
+        console.log(`Xmpp onConnStatusChanged ${StatusString[status]}`)
+		*/
         // Send cached presence when the XMPP connection is re-established.
         if (status === XmppConnection.Status.CONNECTED) {
             this.sendPresence();
