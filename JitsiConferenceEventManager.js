@@ -420,12 +420,12 @@ JitsiConferenceEventManager.prototype.setupChatRoomListeners = function() {
                 conference.eventEmitter.emit(
                     JitsiConferenceEvents.ENDPOINT_MESSAGE_RECEIVED,
                     participant, payload);
-            } else {
+            }/* else {
                 logger.warn(
                     'Ignored XMPPEvents.JSON_MESSAGE_RECEIVED for not existing '
                     + `participant: ${from}`,
                     payload);
-            }
+            }*/
         });
 
     chatRoom.addPresenceListener('startmuted', (data, from) => {
@@ -549,10 +549,12 @@ JitsiConferenceEventManager.prototype.setupRTCListeners = function() {
                     JitsiConferenceEvents.ENDPOINT_MESSAGE_RECEIVED,
                     participant, payload);
             } else {
+                /*  //  Ignore messages for content carrier particpants.  
                 logger.warn(
                     'Ignored ENDPOINT_MESSAGE_RECEIVED for not existing '
                         + `participant: ${from}`,
                     payload);
+                */
             }
         });
 

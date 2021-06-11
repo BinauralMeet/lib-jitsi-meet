@@ -215,6 +215,19 @@ export default class BridgeChannel {
             lastN: value
         });
     }
+   /**
+     * Sends a "perceptive endpoints value" or percieve message via the channel.
+     * @param {number} value The new value for array of perceptive endpoints.
+     */
+    sendSetPercieveEventMessage(value) {
+        const jsonObject = {
+            colibriClass: 'PercieveEvent',
+            perceptibles: value     //  [[participant ids for video], [participant ids for audio]]
+        };
+
+        this._send(jsonObject);
+        logger.log('Channel PerceptEvent peceptible endpoints set to:', value);
+    }
 
     /**
      * Sends a "selected endpoints changed" message via the channel.

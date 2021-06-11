@@ -7,10 +7,10 @@ import browser from '../browser';
 
 const logger = getLogger(__filename);
 const SIM_LAYER_1_RID = '1';
-const SIM_LAYER_2_RID = '2';
-const SIM_LAYER_3_RID = '3';
+//const SIM_LAYER_2_RID = '2';
+//const SIM_LAYER_3_RID = '3';
 
-export const SIM_LAYER_RIDS = [ SIM_LAYER_1_RID, SIM_LAYER_2_RID, SIM_LAYER_3_RID ];
+export const SIM_LAYER_RIDS = [ SIM_LAYER_1_RID];    //, SIM_LAYER_2_RID, SIM_LAYER_3_RID ];
 
 /**
  * Handles track related operations on TraceablePeerConnection when browser is
@@ -48,7 +48,7 @@ export class TPCUtils {
                 rid: SIM_LAYER_1_RID,
                 scaleResolutionDownBy: browser.isFirefox() ? 1.0 : 4.0
             },
-            {
+/*            {
                 active: true,
                 maxBitrate: this.videoBitrates.standard,
                 rid: SIM_LAYER_2_RID,
@@ -59,7 +59,7 @@ export class TPCUtils {
                 maxBitrate: browser.isFirefox() ? this.videoBitrates.low : this.videoBitrates.high,
                 rid: SIM_LAYER_3_RID,
                 scaleResolutionDownBy: browser.isFirefox() ? 4.0 : 1.0
-            }
+            }*/
         ];
     }
 

@@ -37,7 +37,7 @@ export default class JitsiRemoteTrack extends JitsiTrack {
      *        the new JitsiRemoteTrack
      * @param {MediaType} mediaType the type of the media
      * @param {VideoType} videoType the type of the video if applicable
-     * @param {number} ssrc the SSRC number of the Media Stream
+     * @param {number} ssrcs the SSRC numbers of the Media Stream
      * @param {boolean} muted the initial muted state
      * @param {boolean} isP2P indicates whether or not this track belongs to a
      * P2P session
@@ -52,7 +52,7 @@ export default class JitsiRemoteTrack extends JitsiTrack {
             track,
             mediaType,
             videoType,
-            ssrc,
+            ssrcs,
             muted,
             isP2P) {
         super(
@@ -67,10 +67,15 @@ export default class JitsiRemoteTrack extends JitsiTrack {
         this.rtc = rtc;
 
         // Prevent from mixing up type of SSRC which should be a number
-        if (typeof ssrc !== 'number') {
-            throw new TypeError(`SSRC ${ssrc} is not a number`);
+        if (ssrcs.length === 0){
+            throw new TypeError(`No SSRCs`);
         }
-        this.ssrc = ssrc;
+        ssrcs.forEach((ssrc) => {
+            if  (typeof ssrc !== 'number') {
+                throw new TypeError(`SSRC ${ssrc} is not a number`);
+            }
+        })
+        this.ssrcs = ssrcs;
         this.ownerEndpointId = ownerEndpointId;
         this.muted = muted;
         this.isP2P = isP2P;
@@ -187,7 +192,10 @@ export default class JitsiRemoteTrack extends JitsiTrack {
      * @returns {number} the SSRC of this remote track.
      */
     getSSRC() {
-        return this.ssrc;
+        return this.ssrcs[0];
+    }
+    getSSRCs() {
+        return this.ssrcs;
     }
 
     /**
