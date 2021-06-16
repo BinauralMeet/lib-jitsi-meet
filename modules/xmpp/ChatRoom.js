@@ -116,6 +116,7 @@ export default class ChatRoom extends Listenable {
         this.roomjid = Strophe.getBareJidFromJid(jid);
         this.myroomjid = jid;
         this.password = password;
+        this.replaceParticipant = false;
         logger.info(`Joined MUC as ${this.myroomjid}`);
         this.members = {};
         this.presMap = {};
@@ -182,8 +183,9 @@ export default class ChatRoom extends Listenable {
      * @returns {Promise} - resolved when join completes. At the time of this
      * writing it's never rejected.
      */
-    join(password) {
+    join(password, replaceParticipant) {
         this.password = password;
+        this.replaceParticipant = replaceParticipant;
 
         return new Promise(resolve => {
             this.options.disableFocus
@@ -226,6 +228,10 @@ export default class ChatRoom extends Listenable {
         // be considered as joining, and server can send us the message history
         // for the room on every presence
         if (fromJoin) {
+            if (this.replaceParticipant) {
+                pres.c('flip_device').up();
+            }
+
             pres.c('x', { xmlns: this.presMap.xns });
 
             if (this.password) {
@@ -440,6 +446,9 @@ export default class ChatRoom extends Listenable {
         const mucUserItem
             = xElement && xElement.getElementsByTagName('item')[0];
 
+        member.isReplaceParticipant
+            = pres.getElementsByTagName('flip_device').length;
+
         member.affiliation
             = mucUserItem && mucUserItem.getAttribute('affiliation');
         member.role = mucUserItem && mucUserItem.getAttribute('role');
@@ -604,7 +613,8 @@ export default class ChatRoom extends Listenable {
                     member.identity,
                     member.botType,
                     member.jid,
-                    member.features);
+                    member.features,
+                    member.isReplaceParticipant);
 
                 // we are reporting the status with the join
                 // so we do not want a second event about status update
@@ -965,12 +975,12 @@ export default class ChatRoom extends Listenable {
                         + '>status[code="307"]')
                 .length;
         const membersKeys = Object.keys(this.members);
+        const isReplaceParticipant = $(pres).find('flip_device').length;
 
         if (isKick) {
             const actorSelect
                 = $(pres)
                 .find('>x[xmlns="http://jabber.org/protocol/muc#user"]>item>actor');
-
             let actorNick;
 
             if (actorSelect.length) {
@@ -995,7 +1005,8 @@ export default class ChatRoom extends Listenable {
                 isSelfPresence,
                 actorNick,
                 Strophe.getResourceFromJid(from),
-                reason);
+                reason,
+                isReplaceParticipant);
         }
 
         if (isSelfPresence) {
